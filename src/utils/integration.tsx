@@ -212,10 +212,10 @@ export async function joinProjectOnChain(projectId: string) {
 
     const signer = provider.getSigner();
 
-    const contractAddress = "0x2d6C7b7DC0259ed53441d115858e16d65Ad7F615";
+    const contractAddress = "0x040657751595F95C1B6e7F108859EfB11E012298";
 
     const contract = new ethers.Contract(contractAddress, qvABI.abi, signer);
-    
+
     console.log("contract", contract);
 
     const data = await contract.joinProject();
