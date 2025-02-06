@@ -1,14 +1,34 @@
 import axios from "axios";
 import { useFormik } from "formik";
 import { ImagePlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import * as Yup from "yup";
 import { CreatePoolValues } from "../../interface";
+import { createPollOnChain, getFactoryProjects } from "../../utils/integration";
 
 const CreatePool = () => {
   const [dragActive, setDragActive] = useState<boolean>(false);
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const [projectData, setProjectData] = useState<string[]>([]);
+
+  const fetchProjectData = async () => {
+    try {
+      const projectData = await getFactoryProjects();
+      if (Array.isArray(projectData)) {
+        setProjectData(projectData);
+      } else {
+        console.log("Unexpected data format", projectData);
+      }
+    } catch (err) {
+      console.log("err", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjectData();
+  }, []);
 
   const handleUploadImageToIPFS = async (image: File) => {
     const formData = new FormData();
@@ -26,7 +46,7 @@ const CreatePool = () => {
 
     try {
       const url = "https://api.pinata.cloud/pinning/pinFileToIPFS";
-      
+
       const response = await axios.post(url, formData, {
         maxBodyLength: Infinity,
         headers: {
@@ -38,7 +58,15 @@ const CreatePool = () => {
       });
 
       if (response?.status === 200) {
-        console.log(response?.data?.IpfsHash);
+        const body: CreatePoolValues = {
+          name: values.name,
+          description: values.description,
+          projectId: values.projectId,
+          ipfsHash: response?.data?.IpfsHash,
+        };
+
+        const devil = await createPollOnChain(body);
+        console.log("devil", devil);
       }
     } catch (error) {
       console.error("Error uploading to Pinata:", error);
@@ -73,9 +101,9 @@ const CreatePool = () => {
         ),
     }),
 
-    onSubmit: (values, { resetForm }) => {
-      console.log("Form Submitted:", values);
+    onSubmit: async (values, { resetForm }) => {
       handleUploadImageToIPFS(values.image!);
+
       // resetForm();
       // setImagePreview(null);
     },
@@ -105,12 +133,6 @@ const CreatePool = () => {
       setImagePreview(URL.createObjectURL(file));
     }
   };
-
-  const projectOptions = [
-    { id: "1", name: "Project 1" },
-    { id: "2", name: "Project 2" },
-    { id: "3", name: "Project 3" },
-  ];
 
   const {
     handleSubmit,
@@ -211,9 +233,9 @@ const CreatePool = () => {
             } focus:ring-2 focus:ring-[#FE0421] focus:border-transparent`}
           >
             <option value="">Select Project ID</option>
-            {projectOptions.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
+            {projectData.map((project) => (
+              <option key={project} value={project}>
+                {project}
               </option>
             ))}
           </select>

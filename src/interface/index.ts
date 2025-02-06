@@ -1,17 +1,19 @@
 export interface CreateProjectValues {
   name: string;
   description: string;
+  ipfsHash?: string;
   tokensPerUser: number | "";
   tokensPerVerifiedUser: number | "";
-  endTime: string;
-  image: File | null;
+  endDate: number;
+  image?: File | null;
 }
 
 export interface CreatePoolValues {
   name: string;
   description: string;
   projectId: string;
-  image: File | null;
+  image?: File | null;
+  ipfsHash?: string;
 }
 
 export interface PoolListingPage {
@@ -20,7 +22,7 @@ export interface PoolListingPage {
   description: string;
   tokensPerUser: number;
   endTime: number;
-  imageUrl: string;
+  ipfsHash: string;
 }
 
 export interface ProjectDetailPage {
@@ -36,8 +38,13 @@ export interface ProjectDetailPage {
 }
 
 export interface ProjectListingPage {
-  id: number;
+  id: string;
   name: string;
   description: string;
-  imageUrl: string;
+  ipfsHash: string;
+  tokensPerUser: number;
+  tokensPerVerifiedUser: number;
+  minScoreToJoin: number;
+  minScoreToVerify: number;
+  endTime: string;
 }

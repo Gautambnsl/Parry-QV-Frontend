@@ -1,32 +1,40 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, Calendar, Users } from "lucide-react";
 import { PoolListingPage } from "../../interface";
-
-const pools: PoolListingPage[] = [
-  {
-    id: 101,
-    name: "Cricket World Cup",
-    description: "Vote for your favorite cricket team",
-    tokensPerUser: 100,
-    endTime: Date.now() + 7 * 24 * 60 * 60 * 1000,
-    imageUrl:
-      "https://images.unsplash.com/photo-1531415074968-036ba1b575da?auto=format&fit=crop&w=800",
-  },
-  {
-    id: 102,
-    name: "Football Championship",
-    description: "Vote for the best football club",
-    tokensPerUser: 150,
-    endTime: Date.now() + 14 * 24 * 60 * 60 * 1000,
-    imageUrl:
-      "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&w=800",
-  },
-];
+import { useEffect, useState } from "react";
+import { getAllPollsInfo, joinProjectOnChain } from "../../utils/integration";
 
 const PoolListing = () => {
+  // const [pollData, setPollData] = useState<PoolListingPage[]>([]);
+
+  // const fetchProjectData = async () => {
+  //   try {
+  //     const pollData = await getAllPollsInfo();
+  //     if (Array.isArray(pollData)) {
+  //       setPollData(pollData);
+  //     } else {
+  //       console.log("Unexpected data format", pollData);
+  //     }
+  //   } catch (err) {
+  //     console.log("err", err);
+  //   }
+  // };
+
+  // useEffect(() => {
+  //   fetchProjectData();
+  // }, []);
+
+  const { projectId } = useParams();
+
+  // console.log("pollData", pollData);
+
   const navigate = useNavigate();
 
-  const handleJoinProject = () => {};
+  const handleJoinProject = async () => {
+    const response = await joinProjectOnChain(projectId!);
+
+    console.log("response", response);
+  };
 
   return (
     <div className="max-w-7xl mx-auto py-12 px-4">
@@ -63,7 +71,7 @@ const PoolListing = () => {
       </button>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {pools.map((pool) => (
+        {/* {pools.map((pool) => (
           <Link
             key={pool.id}
             to={`pools/${pool.id}`}
@@ -110,7 +118,7 @@ const PoolListing = () => {
               </div>
             </div>
           </Link>
-        ))}
+        ))} */}
       </div>
     </div>
   );

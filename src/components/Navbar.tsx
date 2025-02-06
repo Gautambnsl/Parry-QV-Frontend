@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Vote, PlusCircle, Rocket, Home, Wallet, X, Menu } from "lucide-react";
+import { Vote, Rocket, Home, Wallet, X, Menu } from "lucide-react";
 
 declare global {
   interface Window {
@@ -102,18 +102,6 @@ function Navbar() {
       >
         <Home className="w-5 h-5" />
         <span>Project</span>
-      </Link>
-      <Link
-        to="/create-pool"
-        onClick={() => setIsMenuOpen(false)}
-        className={`flex items-center space-x-1 px-4 py-2 rounded-lg transition-colors ${
-          isActive("/create-pool")
-            ? "bg-[#FE0421] text-white"
-            : "hover:bg-red-50 text-[#0E101A]"
-        }`}
-      >
-        <PlusCircle className="w-5 h-5" />
-        <span>Create Pool</span>
       </Link>
       <Link
         to="/create-project"

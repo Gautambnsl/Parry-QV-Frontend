@@ -1,41 +1,28 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Globe2, Compass, Map, Vote, Heart } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getProjectInfo } from "../utils/integration";
+import { ProjectListingPage } from "../interface";
 
 function Home() {
-  const destinations = [
-    {
-      id: 1,
-      title: "Swiss Alps Retreat",
-      rating: 4.8,
-      trending: true,
-      imageUrl:
-        "https://images.unsplash.com/photo-1527489377706-5bf97e608852?auto=format&fit=crop&w=800",
-    },
-    {
-      id: 2,
-      title: "Maldives Paradise",
-      rating: 4.9,
-      trending: true,
-      imageUrl:
-        "https://images.unsplash.com/photo-1514282401047-d79a71a590e8?auto=format&fit=crop&w=800",
-    },
-    {
-      id: 3,
-      title: "Tokyo Nights",
-      rating: 4.7,
-      trending: false,
-      imageUrl:
-        "https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?auto=format&fit=crop&w=800",
-    },
-    {
-      id: 4,
-      title: "Yosemite Valley",
-      rating: 4.6,
-      trending: true,
-      imageUrl:
-        "https://images.unsplash.com/photo-1532339142463-fd0a8979791a?auto=format&fit=crop&w=800",
-    },
-  ];
+  const [projectsData, setProjectsData] = useState<ProjectListingPage[]>([]);
+
+  const fetchProjectData = async () => {
+    try {
+      const projectData = await getProjectInfo();
+      if (Array.isArray(projectData)) {
+        setProjectsData(projectData);
+      } else {
+        console.log("Unexpected data format", projectData);
+      }
+    } catch (err) {
+      console.log("err", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjectData();
+  }, []);
 
   return (
     <div className="relative">
@@ -142,39 +129,30 @@ function Home() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {destinations.map((item) => (
-              <Link
-                to={`/project/${item.id}`}
-                key={item.id}
-                className="group relative aspect-[3/4] rounded-2xl overflow-hidden transform transition-transform duration-300 hover:scale-105"
-              >
-                <img
-                  src={item.imageUrl}
-                  alt={item.title}
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                  loading="lazy"
-                />
+            {projectsData.length > 0 &&
+              projectsData.map((item: ProjectListingPage) => (
+                <Link
+                  to={`/project/${item.id}`}
+                  key={item.id}
+                  className="group relative aspect-[3/4] rounded-2xl overflow-hidden transform transition-transform duration-300 hover:scale-105"
+                >
+                  <img
+                    src={item.ipfsHash}
+                    alt={item.name}
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    loading="lazy"
+                  />
 
-                {item.trending && (
-                  <div className="absolute top-4 left-4 bg-[#FE0421] text-white px-3 py-1 rounded-full text-sm font-medium">
-                    Trending
+                  <div className="absolute inset-x-4 bottom-4 bg-white/90 backdrop-blur-sm rounded-xl p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300 flex justify-between">
+                    <h3 className="text-lg font-semibold text-[#0E101A]">
+                      {item.description}
+                    </h3>
+                    <span className="text-[#FE0421]">
+                      <ArrowRight className="w-5 h-5" />
+                    </span>
                   </div>
-                )}
-
-                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-[#0E101A] px-3 py-1 rounded-full text-sm font-medium">
-                  ★ {item.rating}
-                </div>
-
-                <div className="absolute inset-x-4 bottom-4 bg-white/90 backdrop-blur-sm rounded-xl p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300 flex justify-between">
-                  <h3 className="text-lg font-semibold text-[#0E101A]">
-                    {item.title}
-                  </h3>
-                  <span className="text-[#FE0421]">
-                    <ArrowRight className="w-5 h-5" />
-                  </span>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              ))}
           </div>
         </div>
       </div>

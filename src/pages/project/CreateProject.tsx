@@ -4,6 +4,7 @@ import * as Yup from "yup";
 import { useState } from "react";
 import axios from "axios";
 import { CreateProjectValues } from "../../interface";
+import { createProjectOnChain } from "../../utils/integration";
 
 const CreateProject: React.FC = () => {
   const [dragActive, setDragActive] = useState<boolean>(false);
@@ -26,6 +27,7 @@ const CreateProject: React.FC = () => {
 
     try {
       const url = "https://api.pinata.cloud/pinning/pinFileToIPFS";
+
       const response = await axios.post(url, formData, {
         maxBodyLength: Infinity,
         headers: {
@@ -37,7 +39,17 @@ const CreateProject: React.FC = () => {
       });
 
       if (response?.status === 200) {
-        console.log(response?.data?.IpfsHash);
+        const body = {
+          name: values.name,
+          description: values.description,
+          ipfsHash: response?.data?.IpfsHash,
+          tokensPerUser: values.tokensPerUser,
+          tokensPerVerifiedUser: values?.tokensPerVerifiedUser,
+          endDate: values.endDate,
+        };
+
+        const devil = await createProjectOnChain(body);
+        console.log("devil", devil);
       }
     } catch (error) {
       console.error("Error uploading to Pinata:", error);
@@ -50,7 +62,7 @@ const CreateProject: React.FC = () => {
       description: "",
       tokensPerUser: "",
       tokensPerVerifiedUser: "",
-      endTime: "",
+      endDate: 1,
       image: null,
     },
 
@@ -67,7 +79,9 @@ const CreateProject: React.FC = () => {
         .required("Tokens per Verified User is required")
         .min(1, "Must be greater than zero"),
 
-      endTime: Yup.string().required("End Date is required"),
+      endDate: Yup.number()
+        .required("Number of days is required")
+        .min(1, "Must be greater than zero"),
 
       image: Yup.mixed<File>()
         .required("Image is required")
@@ -82,8 +96,9 @@ const CreateProject: React.FC = () => {
         ),
     }),
 
-    onSubmit: (values, { resetForm }) => {
+    onSubmit: async (values, { resetForm }) => {
       handleUploadImageToIPFS(values.image!);
+
       // resetForm();
       // setImagePreview(null);
     },
@@ -139,7 +154,10 @@ const CreateProject: React.FC = () => {
         className="bg-white rounded-2xl shadow-xl p-8 space-y-6"
       >
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            htmlFor="endDate"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
             Project Name
           </label>
 
@@ -161,11 +179,15 @@ const CreateProject: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label
+            htmlFor="description"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
             Description
           </label>
 
           <textarea
+            id="description"
             name="description"
             onChange={handleChange}
             onBlur={handleBlur}
@@ -186,7 +208,10 @@ const CreateProject: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="tokensPerUser"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Tokens per User
             </label>
 
@@ -213,7 +238,10 @@ const CreateProject: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="tokensPerVerifiedUser"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Tokens per Verified User
             </label>
 
@@ -241,21 +269,26 @@ const CreateProject: React.FC = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            End Date
+          <label
+            htmlFor="endDate"
+            className="block text-sm font-medium text-gray-700 mb-2"
+          >
+            Number of Days
           </label>
 
           <input
-            type="date"
-            name="endTime"
+            type="number"
+            name="endDate"
             onChange={handleChange}
             onBlur={handleBlur}
-            value={values.endTime}
-            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-[#FE0421] focus:border-transparent bg-gray-50 text-center"
+            value={values.endDate}
+            min={1}
+            placeholder="Enter number of days"
+            className="w-full px-4 py-3 rounded-lg border border-gray-300"
           />
 
-          {touched.endTime && errors.endTime && (
-            <p className="text-red-500 text-sm mt-1">{errors.endTime}</p>
+          {touched.endDate && errors.endDate && (
+            <p className="text-red-500 text-sm mt-1">{errors.endDate}</p>
           )}
         </div>
 
