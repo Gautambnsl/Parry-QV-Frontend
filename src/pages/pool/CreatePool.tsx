@@ -13,38 +13,42 @@ const CreatePool = () => {
 
   const [projectData, setProjectData] = useState<string[]>([]);
 
-  const fetchProjectData = async () => {
-    try {
-      const projectData = await getFactoryProjects();
-      if (Array.isArray(projectData)) {
-        setProjectData(projectData);
-      } else {
-        console.log("Unexpected data format", projectData);
-      }
-    } catch (err) {
-      console.log("err", err);
-    }
-  };
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
+    const fetchProjectData = async () => {
+      try {
+        const projects = await getFactoryProjects();
+        if (Array.isArray(projects)) {
+          setProjectData(projects);
+        } else {
+          console.error("Unexpected data format", projects);
+        }
+      } catch (error) {
+        console.error("Error fetching project data:", error);
+      }
+    };
+
     fetchProjectData();
   }, []);
 
   const handleUploadImageToIPFS = async (image: File) => {
-    const formData = new FormData();
-
-    formData.append("file", image);
-
-    const metadata = JSON.stringify({
-      name: "Image",
-      keyvalues: {
-        description: "Image generated",
-      },
-    });
-
-    formData.append("pinataMetadata", metadata);
+    setLoading(true);
+    setErrorMessage(null);
 
     try {
+      const formData = new FormData();
+      formData.append("file", image);
+      formData.append(
+        "pinataMetadata",
+        JSON.stringify({
+          name: "Image",
+          keyvalues: { description: "Image generated" },
+        })
+      );
+
       const url = "https://api.pinata.cloud/pinning/pinFileToIPFS";
 
       const response = await axios.post(url, formData, {
@@ -57,19 +61,17 @@ const CreatePool = () => {
         },
       });
 
-      if (response?.status === 200) {
-        const body: CreatePoolValues = {
-          name: values.name,
-          description: values.description,
-          projectId: values.projectId,
-          ipfsHash: response?.data?.IpfsHash,
-        };
-
-        const devil = await createPollOnChain(body);
-        console.log("devil", devil);
+      if (response.status === 200 && response.data.IpfsHash) {
+        return response.data.IpfsHash;
+      } else {
+        throw new Error("Failed to upload image to IPFS");
       }
     } catch (error) {
       console.error("Error uploading to Pinata:", error);
+      setErrorMessage("Failed to upload image. Please try again.");
+      return null;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -83,11 +85,8 @@ const CreatePool = () => {
 
     validationSchema: Yup.object({
       name: Yup.string().required("Pool Title is required"),
-
       description: Yup.string().required("Description is required"),
-
       projectId: Yup.string().required("Project ID is required"),
-
       image: Yup.mixed<File>()
         .required("Image is required")
         .test(
@@ -102,10 +101,29 @@ const CreatePool = () => {
     }),
 
     onSubmit: async (values, { resetForm }) => {
-      handleUploadImageToIPFS(values.image!);
+      setLoading(true);
+      setErrorMessage(null);
 
-      // resetForm();
-      // setImagePreview(null);
+      try {
+        const ipfsHash = await handleUploadImageToIPFS(values.image!);
+        if (!ipfsHash) return;
+
+        const payload: CreatePoolValues = {
+          name: values.name,
+          description: values.description,
+          projectId: values.projectId,
+          ipfsHash,
+        };
+
+        await createPollOnChain(payload);
+        resetForm();
+        setImagePreview(null);
+      } catch (error) {
+        console.error("Error creating pool:", error);
+        setErrorMessage("Failed to create pool. Please try again.");
+      } finally {
+        setLoading(false);
+      }
     },
   });
 
@@ -119,7 +137,7 @@ const CreatePool = () => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    if (e.dataTransfer.files?.[0]) {
       const file = e.dataTransfer.files[0];
       setFieldValue("image", file);
       setImagePreview(URL.createObjectURL(file));
@@ -127,7 +145,7 @@ const CreatePool = () => {
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.currentTarget.files && event.currentTarget.files[0]) {
+    if (event.currentTarget.files?.[0]) {
       const file = event.currentTarget.files[0];
       setFieldValue("image", file);
       setImagePreview(URL.createObjectURL(file));
@@ -261,6 +279,7 @@ const CreatePool = () => {
                   src={imagePreview}
                   alt="Preview"
                   className="h-40 object-contain"
+                  loading="lazy"
                 />
               ) : (
                 <>
@@ -292,10 +311,15 @@ const CreatePool = () => {
 
         <button
           type="submit"
+          disabled={loading}
           className="w-full bg-[#FE0421] text-white py-4 px-6 rounded-lg font-semibold hover:bg-red-600 transition-colors"
         >
-          Create Pool
+          {loading ? "Creating..." : "Create Pool"}
         </button>
+
+        {errorMessage && (
+          <p className="text-red-500 text-sm mt-2">{errorMessage}</p>
+        )}
       </form>
     </div>
   );

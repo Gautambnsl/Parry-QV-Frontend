@@ -5,97 +5,81 @@ import qvABI from "../utils/qv.json";
 import {
   CreatePoolValues,
   CreateProjectValues,
-  PoolListingPage,
   ProjectListingPage,
 } from "../interface";
 
+const FACTORY_ADDRESS = "0x77159cB39d163Ed13915265cb7BcB07e122E682f";
+const RPC_URL =
+  "https://opt-sepolia.g.alchemy.com/v2/swE9yoWrnP9EzbOKdPsJD2Hk0yb3-kDr";
+
 export async function getNetwork() {
-  const chainId = Number(
-    await window.ethereum.request({ method: "eth_chainId" })
-  );
-  return chainId;
+  return Number(await window.ethereum.request({ method: "eth_chainId" }));
 }
 
-export async function getRPC() {
-  return "https://opt-sepolia.g.alchemy.com/v2/swE9yoWrnP9EzbOKdPsJD2Hk0yb3-kDr";
+export async function getSigner() {
+  if (!window.ethereum) throw new Error("MetaMask is not installed");
+
+  const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+  await provider.send("eth_requestAccounts", []);
+  return provider.getSigner();
+}
+
+export async function getProvider() {
+  return new ethers.providers.JsonRpcProvider(RPC_URL);
 }
 
 export async function getAddress() {
   const provider = await detectEthereumProvider();
-  const delay = (ms) => new Promise((res) => setTimeout(res, ms));
-  await delay(500);
-  if (provider?.selectedAddress) {
-    return provider?.selectedAddress;
-  } else {
-    return;
-  }
-}
-
-export async function getSigner() {
-  const address = await getAddress();
-
-  const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
-  if (provider && address) {
-    await provider.send("eth_requestAccounts", []);
-    const signer = provider.getSigner();
-    return signer;
-  } else {
-    return;
-  }
-}
-
-export async function getProvider() {
-  const rpc = await getRPC();
-  const provider = new ethers.providers.JsonRpcProvider(rpc);
-  return provider;
+  if (!provider) return null;
+  return provider?.selectedAddress || null;
 }
 
 export async function getFactoryProjects() {
   try {
-    const rpc = await getRPC();
-    const provider = new ethers.providers.JsonRpcProvider(rpc);
-    const contractAddress = "0x77159cB39d163Ed13915265cb7BcB07e122E682f";
+    const provider = await getProvider();
     const contract = new ethers.Contract(
-      contractAddress,
+      FACTORY_ADDRESS,
       factoryABI.abi,
       provider
     );
-
     const data = await contract.getProjects();
+
+    if (!data || data.length === 0) throw new Error("No projects found");
 
     return data;
   } catch (err) {
-    return { status: false, err };
+    console.error("Error fetching factory projects:", err);
+    return [];
   }
 }
 
 export async function getProjectInfo() {
   try {
-    const rpc = await getRPC();
     const projects = await getFactoryProjects();
-    const provider = new ethers.providers.JsonRpcProvider(rpc);
+    const provider = await getProvider();
 
-    const projectData = [];
+    const projectData: ProjectListingPage[] = await Promise.all(
+      projects.map(async (projectAddress: string) => {
+        const contract = new ethers.Contract(
+          projectAddress,
+          qvABI.abi,
+          provider
+        );
+        const projectInfo = await contract.getProjectInfo();
 
-    for (const projectAddress of projects) {
-      const contract = new ethers.Contract(projectAddress, qvABI.abi, provider);
-
-      const projectInfo = await contract.getProjectInfo();
-
-      const project: ProjectListingPage = {
-        id: projectAddress,
-        name: projectInfo.name,
-        description: projectInfo.description,
-        ipfsHash: `https://amaranth-personal-slug-526.mypinata.cloud/ipfs/${projectInfo.ipfsHash}`,
-        tokensPerUser: projectInfo.tokensPerUser.toNumber(),
-        tokensPerVerifiedUser: projectInfo.tokensPerVerifiedUser.toNumber(),
-        minScoreToJoin: projectInfo.minScoreToJoin.toNumber(),
-        minScoreToVerify: projectInfo.minScoreToVerify.toNumber(),
-        endTime: projectInfo.endTime.toString(),
-      };
-
-      projectData.push(project);
-    }
+        return {
+          id: projectAddress,
+          name: projectInfo.name,
+          description: projectInfo.description,
+          ipfsHash: `https://amaranth-personal-slug-526.mypinata.cloud/ipfs/${projectInfo.ipfsHash}`,
+          tokensPerUser: projectInfo.tokensPerUser.toNumber(),
+          tokensPerVerifiedUser: projectInfo.tokensPerVerifiedUser.toNumber(),
+          minScoreToJoin: projectInfo.minScoreToJoin.toNumber(),
+          minScoreToVerify: projectInfo.minScoreToVerify.toNumber(),
+          endTime: projectInfo.endTime.toString(),
+        };
+      })
+    );
 
     return projectData;
   } catch (err) {
@@ -103,60 +87,33 @@ export async function getProjectInfo() {
   }
 }
 
-export async function getAllPollsInfo() {
+export async function getAllPollsInfo(projectId: string) {
   try {
-    const rpc = await getRPC();
-    const projects = await getFactoryProjects();
-    const provider = new ethers.providers.JsonRpcProvider(rpc);
+    const provider = await getProvider();
+    const contract = new ethers.Contract(projectId, qvABI.abi, provider);
 
-    const pollData = [];
-
-    for (const projectAddress of projects) {
-      const contract = new ethers.Contract(projectAddress, qvABI.abi, provider);
-
-      const pollInfo = await contract.getAllPolls();
-
-      console.log("pollInfo", pollInfo);
-
-      const project: PoolListingPage = {
-        id: projectAddress,
-        name: pollInfo.name,
-        description: pollInfo.description,
-        ipfsHash: `https://amaranth-personal-slug-526.mypinata.cloud/ipfs/${pollInfo.ipfsHash}`,
-        tokensPerUser: pollInfo.tokensPerUser.toNumber(),
-        tokensPerVerifiedUser: pollInfo.tokensPerVerifiedUser.toNumber(),
-        minScoreToJoin: pollInfo.minScoreToJoin.toNumber(),
-        minScoreToVerify: pollInfo.minScoreToVerify.toNumber(),
-        endTime: pollInfo.endTime.toString(),
-      };
-
-      pollData.push(project);
-    }
-
-    return pollData;
+    const pollInfo = await contract.getAllPolls();
+    return pollInfo;
   } catch (err) {
-    return { status: false, err };
+    console.error("Error fetching polls:", err);
+    return {
+      status: false,
+      error: err instanceof Error ? err.message : "Failed to fetch polls",
+    };
   }
 }
 
 export async function createProjectOnChain(projectData: CreateProjectValues) {
   try {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-
-    const signer = provider.getSigner();
-
-    const contractAddress = "0x77159cB39d163Ed13915265cb7BcB07e122E682f";
-
+    const signer = await getSigner();
     const contract = new ethers.Contract(
-      contractAddress,
+      FACTORY_ADDRESS,
       factoryABI.abi,
       signer
     );
 
-    const block = await provider.getBlock("latest");
-
-    const currentTimestamp = block.timestamp;
+    const block = await signer.provider?.getBlock("latest");
+    const currentTimestamp = block?.timestamp || 0;
 
     const tx = await contract.createProject(
       projectData.name,
@@ -172,57 +129,94 @@ export async function createProjectOnChain(projectData: CreateProjectValues) {
     console.log("Transaction sent:", tx.hash);
     const receipt = await tx.wait();
     console.log("Transaction confirmed:", receipt);
-    alert("Project created successfully!");
-  } catch (err) {
-    return { status: false, err };
+
+    return { status: true, receipt };
+  } catch (error) {
+    console.error("Error creating project on chain:", error);
+    return { status: false, error: (error as Error).message };
   }
 }
 
 export async function createPollOnChain(body: CreatePoolValues) {
   try {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
-
-    const signer = provider.getSigner();
-
-    const contractAddress = body.projectId;
-
-    const contract = new ethers.Contract(contractAddress, qvABI.abi, signer);
+    const signer = await getSigner();
+    const contract = new ethers.Contract(body.projectId, qvABI.abi, signer);
 
     const tx = await contract.createPoll(
       body.name,
       body.description,
       body.ipfsHash
     );
+    console.log("Transaction sent:", tx.hash);
 
-    console.log("tx", tx);
-
-    console.log("Transaction Hash:", tx.hash);
     await tx.wait();
     console.log("Transaction Confirmed");
+    return { status: true, txHash: tx.hash };
   } catch (error) {
     console.error("Error creating poll on blockchain:", error);
+    return { status: false, error: (error as Error).message };
   }
 }
 
 export async function joinProjectOnChain(projectId: string) {
   try {
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
-    await provider.send("eth_requestAccounts", []);
+    const signer = await getSigner();
+    const contract = new ethers.Contract(projectId, qvABI.abi, signer);
 
-    const signer = provider.getSigner();
+    const tx = await contract.joinProject();
+    console.log("Transaction Hash:", tx.hash);
 
-    const contractAddress = "0x040657751595F95C1B6e7F108859EfB11E012298";
-
-    const contract = new ethers.Contract(contractAddress, qvABI.abi, signer);
-
-    console.log("contract", contract);
-
-    const data = await contract.joinProject();
-
-    console.log("data joinProjectOnChain", data);
-    return data;
+    await tx.wait();
+    console.log("Transaction Confirmed");
+    return { status: true, txHash: tx.hash };
   } catch (err) {
-    return { status: false, err };
+    console.error("Error joining project:", err);
+    return {
+      status: false,
+      error: err instanceof Error ? err.message : "Failed to join project",
+    };
+  }
+}
+
+export async function castVoteOnChain(
+  projectId: string,
+  poolId: number,
+  votingPower: number
+) {
+  try {
+    const signer = await getSigner();
+    const contract = new ethers.Contract(projectId, qvABI.abi, signer);
+
+    const tx = await contract.castVote(poolId, votingPower);
+    console.log("Transaction Sent:", tx.hash);
+
+    await tx.wait();
+    console.log("Transaction Confirmed:", tx.hash);
+
+    return { status: true, txHash: tx.hash };
+  } catch (err) {
+    console.error("Error casting vote:", err);
+    return {
+      status: false,
+      error: err instanceof Error ? err.message : "Failed to cast vote",
+    };
+  }
+}
+
+export async function getPollInfoOnChain(projectId: string, poolId: string) {
+  try {
+    const signer = await getSigner();
+    const contract = new ethers.Contract(projectId, qvABI.abi, signer);
+
+    const pollData = await contract.getPollInfo(poolId);
+    console.log("Fetched Poll Info:", pollData);
+
+    return pollData;
+  } catch (err) {
+    console.error("Error fetching poll info:", err);
+    return {
+      status: false,
+      error: err instanceof Error ? err.message : "Failed to fetch poll info",
+    };
   }
 }

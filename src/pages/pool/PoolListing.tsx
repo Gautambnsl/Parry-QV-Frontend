@@ -1,40 +1,54 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowRight, Calendar, Users } from "lucide-react";
+import { ArrowRight, Users } from "lucide-react";
 import { PoolListingPage } from "../../interface";
 import { useEffect, useState } from "react";
 import { getAllPollsInfo, joinProjectOnChain } from "../../utils/integration";
 
 const PoolListing = () => {
-  // const [pollData, setPollData] = useState<PoolListingPage[]>([]);
+  const [pollData, setPollData] = useState<PoolListingPage[]>([]);
 
-  // const fetchProjectData = async () => {
-  //   try {
-  //     const pollData = await getAllPollsInfo();
-  //     if (Array.isArray(pollData)) {
-  //       setPollData(pollData);
-  //     } else {
-  //       console.log("Unexpected data format", pollData);
-  //     }
-  //   } catch (err) {
-  //     console.log("err", err);
-  //   }
-  // };
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // useEffect(() => {
-  //   fetchProjectData();
-  // }, []);
+  const [error, setError] = useState<string | null>(null);
 
   const { projectId } = useParams();
-
-  // console.log("pollData", pollData);
-
   const navigate = useNavigate();
 
-  const handleJoinProject = async () => {
-    const response = await joinProjectOnChain(projectId!);
+  const fetchProjectData = async () => {
+    setLoading(true);
+    setError(null);
 
-    console.log("response", response);
+    try {
+      const pollData = await getAllPollsInfo(projectId!);
+      if (Array.isArray(pollData)) {
+        setPollData(pollData);
+      } else {
+        throw new Error("Unexpected response format from API");
+      }
+    } catch (err) {
+      console.error("Error fetching pools:", err);
+      if (err instanceof Error) {
+        setError(err.message || "Failed to load pools. Please try again.");
+      } else {
+        setError("Failed to load pools. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const handleJoinProject = async () => {
+    try {
+      const response = await joinProjectOnChain(projectId!);
+      console.log("Join Project Response:", response);
+    } catch (err) {
+      console.error("Error joining project:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProjectData();
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto py-12 px-4">
@@ -70,56 +84,67 @@ const PoolListing = () => {
         Back to Project
       </button>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {/* {pools.map((pool) => (
-          <Link
-            key={pool.id}
-            to={`pools/${pool.id}`}
-            className="group bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
-          >
-            <div className="relative h-48">
-              <img
-                src={pool.imageUrl}
-                alt={pool.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4">
-                <h2 className="text-xl font-bold text-white">{pool.name}</h2>
-              </div>
-            </div>
+      {loading && (
+        <div className="text-center text-gray-500 text-xl">
+          Loading pools...
+        </div>
+      )}
 
-            <div className="p-6">
-              <p className="text-gray-600 mb-4 line-clamp-2">
-                {pool.description}
-              </p>
+      {error && <div className="text-center text-red-500 text-xl">{error}</div>}
 
-              <div className="flex items-center justify-between text-sm">
-                <div className="flex items-center text-[#0E101A]">
-                  <Users className="w-4 h-4 mr-2" />
-                  <span>Tokens per User:</span>
+      {!loading && !error && pollData.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {pollData.map((pool, index: number) => (
+            <Link
+              key={pool.creator}
+              to={`pools/${index}`}
+              className="group bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
+            >
+              <div className="relative h-48">
+                <img
+                  src={`https://amaranth-personal-slug-526.mypinata.cloud/ipfs/${pool.ipfsHash}`}
+                  alt={pool.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-4 left-4 right-4">
+                  <h2 className="text-xl font-bold text-white">{pool.name}</h2>
                 </div>
-                <span className="font-medium text-[#FE0421]">
-                  {pool.tokensPerUser}
-                </span>
               </div>
 
-              <div className="flex items-center justify-between text-sm mt-3">
-                <div className="flex items-center text-[#0E101A]">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  <span>Ends in:</span>
+              <div className="p-6">
+                <p className="text-gray-600 mb-4 line-clamp-2">
+                  {pool.description}
+                </p>
+
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center text-[#0E101A]">
+                    <Users className="w-4 h-4 mr-2" />
+                    <span>Total Participants:</span>
+                  </div>
+                  <span className="font-medium text-[#FE0421]">
+                    {pool.totalParticipants.toString()}
+                  </span>
                 </div>
-                <span className="font-medium text-[#FE0421]">
-                  {Math.ceil(
-                    (pool.endTime - Date.now()) / (1000 * 60 * 60 * 24)
-                  )}{" "}
-                  days
-                </span>
+
+                <div className="flex items-center justify-between text-sm mt-3">
+                  <span className="font-medium text-[#FE0421]">
+                    {pool.isActive ? "Active" : "Inactive"}
+                  </span>
+                </div>
               </div>
-            </div>
-          </Link>
-        ))} */}
-      </div>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        !loading &&
+        !error && (
+          <div className="text-center text-gray-500 text-xl">
+            No pools available.
+          </div>
+        )
+      )}
     </div>
   );
 };

@@ -7,17 +7,35 @@ import { ProjectListingPage } from "../interface";
 function Home() {
   const [projectsData, setProjectsData] = useState<ProjectListingPage[]>([]);
 
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const [error, setError] = useState<string | null>(null);
+
   const fetchProjectData = async () => {
+    setLoading(true);
+    setError(null);
+
     try {
       const projectData = await getProjectInfo();
       if (Array.isArray(projectData)) {
         setProjectsData(projectData);
       } else {
-        console.log("Unexpected data format", projectData);
+        throw new Error("Unexpected data format received.");
       }
     } catch (err) {
-      console.log("err", err);
+      console.error("Error fetching projects:", err);
+      if (err instanceof Error) {
+        setError(err.message || "Failed to load projects.");
+      } else {
+        setError("Failed to load projects.");
+      }
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const getLimitedProjects = () => {
+    return projectsData.slice(0, 4);
   };
 
   useEffect(() => {
@@ -37,7 +55,7 @@ function Home() {
               <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-lg px-4 py-2 rounded-full">
                 <Vote className="w-5 h-5 text-[#FE0421]" />
                 <span className="text-white font-medium">
-                  Welcome to VoteHub
+                  Welcome to Parry Vote
                 </span>
               </div>
 
@@ -89,9 +107,9 @@ function Home() {
                     { icon: Compass, label: "Destinations", value: "10K+" },
                     { icon: Heart, label: "Happy Voters", value: "100K+" },
                     { icon: Map, label: "Monthly Votes", value: "50K+" },
-                  ].map((stat, index) => (
+                  ].map((stat) => (
                     <div
-                      key={index}
+                      key={stat.label}
                       className="group bg-white/5 backdrop-blur-lg p-6 rounded-2xl hover:bg-white/10 transition-colors"
                     >
                       <stat.icon className="w-8 h-8 text-[#FE0421] mb-4 transform group-hover:scale-110 transition-transform" />
@@ -128,9 +146,17 @@ function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {projectsData.length > 0 &&
-              projectsData.map((item: ProjectListingPage) => (
+          {loading && (
+            <p className="text-gray-500 text-center">Loading projects...</p>
+          )}
+          {error && <p className="text-red-500 text-center">{error}</p>}
+          {!loading && !error && projectsData.length === 0 && (
+            <p className="text-gray-500 text-center">No projects found.</p>
+          )}
+
+          {!loading && !error && projectsData.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {getLimitedProjects().map((item: ProjectListingPage) => (
                 <Link
                   to={`/project/${item.id}`}
                   key={item.id}
@@ -153,7 +179,8 @@ function Home() {
                   </div>
                 </Link>
               ))}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

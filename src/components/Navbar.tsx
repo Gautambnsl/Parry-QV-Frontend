@@ -142,7 +142,7 @@ function Navbar() {
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
               <Vote className="w-8 h-8 text-[#FE0421]" />
-              <span className="text-xl font-bold text-[#0E101A]">VoteHub</span>
+              <span className="text-xl font-bold text-[#0E101A]">Parry Vote</span>
             </Link>
           </div>
 

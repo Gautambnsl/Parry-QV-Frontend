@@ -11,9 +11,15 @@ const CreateProject: React.FC = () => {
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  const handleUploadImageToIPFS = async (image: File) => {
-    const formData = new FormData();
+  const [loading, setLoading] = useState<boolean>(false);
 
+  const [error, setError] = useState<string | null>(null);
+
+  const handleUploadImageToIPFS = async (image: File) => {
+    setLoading(true);
+    setError(null);
+
+    const formData = new FormData();
     formData.append("file", image);
 
     const metadata = JSON.stringify({
@@ -39,20 +45,16 @@ const CreateProject: React.FC = () => {
       });
 
       if (response?.status === 200) {
-        const body = {
-          name: values.name,
-          description: values.description,
-          ipfsHash: response?.data?.IpfsHash,
-          tokensPerUser: values.tokensPerUser,
-          tokensPerVerifiedUser: values?.tokensPerVerifiedUser,
-          endDate: values.endDate,
-        };
-
-        const devil = await createProjectOnChain(body);
-        console.log("devil", devil);
+        return response?.data?.IpfsHash;
+      } else {
+        throw new Error("Failed to upload image to IPFS");
       }
     } catch (error) {
       console.error("Error uploading to Pinata:", error);
+      setError("Failed to upload image. Please try again.");
+      return null;
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -68,21 +70,16 @@ const CreateProject: React.FC = () => {
 
     validationSchema: Yup.object({
       name: Yup.string().required("Project Name is required"),
-
       description: Yup.string().required("Description is required"),
-
       tokensPerUser: Yup.number()
         .required("Tokens per User is required")
         .min(1, "Must be greater than zero"),
-
       tokensPerVerifiedUser: Yup.number()
         .required("Tokens per Verified User is required")
         .min(1, "Must be greater than zero"),
-
       endDate: Yup.number()
         .required("Number of days is required")
         .min(1, "Must be greater than zero"),
-
       image: Yup.mixed<File>()
         .required("Image is required")
         .test(
@@ -97,10 +94,42 @@ const CreateProject: React.FC = () => {
     }),
 
     onSubmit: async (values, { resetForm }) => {
-      handleUploadImageToIPFS(values.image!);
+      setLoading(true);
+      setError(null);
 
-      // resetForm();
-      // setImagePreview(null);
+      try {
+        const ipfsHash = await handleUploadImageToIPFS(values.image!);
+        if (!ipfsHash) {
+          throw new Error("IPFS upload failed");
+        }
+
+        const body = {
+          name: values.name,
+          description: values.description,
+          ipfsHash,
+          tokensPerUser: values.tokensPerUser,
+          tokensPerVerifiedUser: values.tokensPerVerifiedUser,
+          endDate: values.endDate,
+        };
+
+        const txResult = await createProjectOnChain(body);
+        if (!txResult?.status) {
+          throw new Error("Blockchain transaction failed");
+        }
+
+        alert("Project created successfully!");
+        resetForm();
+        setImagePreview(null);
+      } catch (err) {
+        console.error(err);
+        if (err instanceof Error) {
+          setError(err.message || "Something went wrong. Please try again.");
+        } else {
+          setError("Something went wrong. Please try again.");
+        }
+      } finally {
+        setLoading(false);
+      }
     },
   });
 
@@ -114,7 +143,7 @@ const CreateProject: React.FC = () => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    if (e.dataTransfer.files?.[0]) {
       const file = e.dataTransfer.files[0];
       setFieldValue("image", file);
       setImagePreview(URL.createObjectURL(file));
@@ -122,7 +151,7 @@ const CreateProject: React.FC = () => {
   };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.currentTarget.files && event.currentTarget.files[0]) {
+    if (event.currentTarget.files?.[0]) {
       const file = event.currentTarget.files[0];
       setFieldValue("image", file);
       setImagePreview(URL.createObjectURL(file));
@@ -148,6 +177,8 @@ const CreateProject: React.FC = () => {
 
         <p className="text-gray-600">Share your project with the community</p>
       </div>
+
+      {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
       <form
         onSubmit={handleSubmit}
@@ -308,6 +339,7 @@ const CreateProject: React.FC = () => {
                   src={imagePreview}
                   alt="Preview"
                   className="h-40 object-contain"
+                  loading="lazy"
                 />
               ) : (
                 <>
@@ -340,8 +372,9 @@ const CreateProject: React.FC = () => {
         <button
           type="submit"
           className="w-full bg-[#FE0421] text-white py-4 px-6 rounded-lg font-semibold hover:bg-red-600 transition-colors"
+          disabled={loading}
         >
-          Create Project
+          {loading ? "Creating Project..." : "Create Project"}
         </button>
       </form>
     </div>

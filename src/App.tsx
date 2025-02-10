@@ -1,8 +1,10 @@
 import { Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
+
 import Home from "./pages/Home";
-import { useEffect } from "react";
 import ProjectListing from "./pages/project/ProjectListing";
 import PoolListing from "./pages/pool/PoolListing";
 import ProjectDetail from "./pages/project/ProjectDetail";

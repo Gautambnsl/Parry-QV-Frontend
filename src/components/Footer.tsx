@@ -18,7 +18,7 @@ const Footer = () => {
           <div className="space-y-6">
             <Link to="/" className="flex items-center space-x-2">
               <Vote className="w-8 h-8 text-[#FE0421]" />
-              <span className="text-xl font-bold text-[#0E101A]">VoteHub</span>
+              <span className="text-xl font-bold text-[#0E101A]">Parry Vote</span>
             </Link>
             <p className="text-gray-600">
               Empowering communities to discover and vote for the world's most
@@ -65,7 +65,7 @@ const Footer = () => {
               </li>
               <li className="flex items-center space-x-3 text-gray-600">
                 <Mail className="w-5 h-5 text-[#FE0421]" />
-                <span>contact@votehub.com</span>
+                <span>contact@parryvote.com</span>
               </li>
               <li className="flex items-center space-x-3 text-gray-600">
                 <Phone className="w-5 h-5 text-[#FE0421]" />
@@ -78,7 +78,7 @@ const Footer = () => {
         <div className="py-6 border-t">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="text-gray-600">
-              © {new Date().getFullYear()} VoteHub. All rights reserved.
+              © {new Date().getFullYear()} Parry Vote. All rights reserved.
             </div>
             <div className="flex space-x-6">
               <Link

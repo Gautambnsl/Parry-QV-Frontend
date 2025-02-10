@@ -17,12 +17,13 @@ export interface CreatePoolValues {
 }
 
 export interface PoolListingPage {
-  id: number;
   name: string;
   description: string;
-  tokensPerUser: number;
-  endTime: number;
   ipfsHash: string;
+  creator: string;
+  isActive: boolean;
+  totalVotes: number;
+  totalParticipants: number;
 }
 
 export interface ProjectDetailPage {
@@ -48,6 +49,3 @@ export interface ProjectListingPage {
   minScoreToVerify: number;
   endTime: string;
 }
-
-
-// 0x33737E229C216d1525463f65Eb15955fedaE2153
