@@ -8,7 +8,7 @@ import {
   ProjectListingPage,
 } from "../interface";
 
-const FACTORY_ADDRESS = "0x77159cB39d163Ed13915265cb7BcB07e122E682f";
+const FACTORY_ADDRESS = "0x5A91d637c54925092068b97e51DE64B0DAE0f48E";
 const RPC_URL =
   "https://opt-sepolia.g.alchemy.com/v2/swE9yoWrnP9EzbOKdPsJD2Hk0yb3-kDr";
 
