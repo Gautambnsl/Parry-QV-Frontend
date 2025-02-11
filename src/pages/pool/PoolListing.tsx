@@ -1,15 +1,24 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, Users } from "lucide-react";
-import { PoolListingPage } from "../../interface";
+import { PoolListingPage, UserInfoPage } from "../../interface";
 import { useEffect, useState } from "react";
-import { getAllPollsInfo, joinProjectOnChain } from "../../utils/integration";
+import {
+  getAllPollsInfo,
+  getUserInfoOnChain,
+  joinProjectOnChain,
+} from "../../utils/integration";
+import ErrorModal from "../../components/ErrorModal";
 
 const PoolListing = () => {
   const [pollData, setPollData] = useState<PoolListingPage[]>([]);
 
+  const [userInfoData, setUserInfoData] = useState<UserInfoPage>();
+
   const [loading, setLoading] = useState<boolean>(true);
 
   const [error, setError] = useState<string | null>(null);
+
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
 
   const { projectId } = useParams();
   const navigate = useNavigate();
@@ -27,11 +36,30 @@ const PoolListing = () => {
       }
     } catch (err) {
       console.error("Error fetching pools:", err);
-      if (err instanceof Error) {
-        setError(err.message || "Failed to load pools. Please try again.");
-      } else {
-        setError("Failed to load pools. Please try again.");
-      }
+      setError("Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const userInfoDataFunction = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const userInfoData = await getUserInfoOnChain(projectId!);
+
+      setUserInfoData({
+        isRegistered: userInfoData[0],
+        isVerified: userInfoData[1],
+        tokensLeft: userInfoData[2].toString(),
+        lastScoreCheck: userInfoData[3].toString(),
+        passportScore: userInfoData[4].toString(),
+        totalVotesCast: userInfoData[5].toString(),
+      });
+    } catch (err) {
+      console.error("Error fetching pools:", err);
+      setError("Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -40,15 +68,20 @@ const PoolListing = () => {
   const handleJoinProject = async () => {
     try {
       const response = await joinProjectOnChain(projectId!);
-      console.log("Join Project Response:", response);
+      if (response.status) {
+        setModalOpen(true);
+      }
     } catch (err) {
-      console.error("Error joining project:", err);
+      setError("Something went wrong.");
     }
   };
 
   useEffect(() => {
     fetchProjectData();
+    userInfoDataFunction();
   }, []);
+
+  console.log("userInfoData", userInfoData);
 
   return (
     <div className="max-w-7xl mx-auto py-12 px-4">
@@ -62,11 +95,19 @@ const PoolListing = () => {
         <div className="flex">
           <button
             onClick={handleJoinProject}
-            className="inline-block bg-[#FE0421] text-white px-5 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300 flex gap-2 items-center"
+            className="inline-block bg-[#FE0421] text-white px-5 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300"
           >
-            <span>Join Project</span>
-            <ArrowRight className="w-5 h-5" />
+            <span>Token Balance: {userInfoData?.tokensLeft}</span>
           </button>
+          {!userInfoData?.isRegistered && (
+            <button
+              onClick={handleJoinProject}
+              className="inline-block bg-[#FE0421] text-white px-5 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300 flex gap-2 items-center ml-2"
+            >
+              <span>Join Project</span>
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          )}
           <Link
             to="/create-pool"
             className="inline-block bg-[#FE0421] text-white px-5 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300 ml-2"
@@ -144,6 +185,32 @@ const PoolListing = () => {
             No pools available.
           </div>
         )
+      )}
+
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-xl w-96">
+            <p className="text-gray-600 mb-4">
+              You have successfully joined the project.
+            </p>
+
+            <div className="flex space-x-4">
+              <button
+                onClick={() => {
+                  setModalOpen(false);
+                  window.location.reload();
+                }}
+                className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <ErrorModal errorMessage={error} onClose={() => setError(null)} />
       )}
     </div>
   );

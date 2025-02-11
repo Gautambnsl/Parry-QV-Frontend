@@ -5,6 +5,8 @@ export interface CreateProjectValues {
   tokensPerUser: number | "";
   tokensPerVerifiedUser: number | "";
   endDate: number;
+  minScoreToJoin: number;
+  minScoreToVerify: number;
   image?: File | null;
 }
 
@@ -48,4 +50,13 @@ export interface ProjectListingPage {
   minScoreToJoin: number;
   minScoreToVerify: number;
   endTime: string;
+}
+
+export interface UserInfoPage {
+  isRegistered: boolean;
+  isVerified: boolean;
+  lastScoreCheck: number;
+  passportScore: number;
+  tokensLeft: number;
+  totalVotesCast: number;
 }

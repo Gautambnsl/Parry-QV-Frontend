@@ -1,22 +1,36 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Vote } from "lucide-react";
-import { castVoteOnChain, getPollInfoOnChain } from "../../utils/integration";
+import { Vote, X } from "lucide-react";
+import {
+  castVoteOnChain,
+  getPollInfoOnChain,
+  getUserInfoOnChain,
+  getVoteInfoOnChain,
+} from "../../utils/integration";
 import { BigNumber } from "ethers";
-import { PoolListingPage } from "../../interface";
+import { PoolListingPage, UserInfoPage } from "../../interface";
+import ErrorModal from "../../components/ErrorModal";
 
-function ProjectDetail() {
+const ProjectDetail = () => {
   const [pollData, setPollData] = useState<PoolListingPage | null>(null);
 
   const { poolId, projectId } = useParams();
 
-  const [voteAmount, setVoteAmount] = useState<number>(0);
+  const [voteInfoData, setVoteInfoData] = useState<any>();
+
+  const [voteAmount, setVoteAmount] = useState<number>(
+    voteInfoData?.votingPower
+  );
 
   const [totalVotes, setTotalVotes] = useState<number>(0);
 
   const [loading, setLoading] = useState<boolean>(false);
 
   const [error, setError] = useState<string | null>(null);
+
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
+
+  const [userInfoData, setUserInfoData] = useState<UserInfoPage>();
 
   const calculateQuadraticCost = (votes: number) => Math.pow(votes, 2);
 
@@ -27,19 +41,22 @@ function ProjectDetail() {
   const handleVoteSubmit = async () => {
     if (voteAmount > 0 && projectId && poolId) {
       setLoading(true);
+      setModalOpen(false);
       try {
-        const response = await castVoteOnChain(
+        const response: any = await castVoteOnChain(
           projectId,
           Number(poolId),
           voteAmount
         );
+
         if (response.status) {
           setTotalVotes((prev) => prev + voteAmount);
           setVoteAmount(0);
         } else {
-          setError(response.error || "Voting failed");
+          setError("Something went wrong.");
         }
-      } catch {
+      } catch (err) {
+        console.log("Error:", err);
         setError("An unexpected error occurred while voting.");
       }
       setLoading(false);
@@ -52,11 +69,6 @@ function ProjectDetail() {
 
     try {
       const pollData = await getPollInfoOnChain(projectId, poolId);
-
-      if (pollData?.status === false) {
-        setError(pollData.error || "Failed to fetch poll data.");
-        return;
-      }
 
       setPollData({
         name: pollData[0],
@@ -76,14 +88,57 @@ function ProjectDetail() {
     setLoading(false);
   };
 
+  const userInfoDataFunction = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const userInfoData = await getUserInfoOnChain(projectId!);
+
+      setUserInfoData({
+        isRegistered: userInfoData[0],
+        isVerified: userInfoData[1],
+        tokensLeft: userInfoData[2].toString(),
+        lastScoreCheck: userInfoData[3].toString(),
+        passportScore: userInfoData[4].toString(),
+        totalVotesCast: userInfoData[5].toString(),
+      });
+    } catch (err) {
+      console.error("Error fetching pools:", err);
+      setError("Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const voteInfoDataFunction = async () => {
+    const voteInfoData = await getVoteInfoOnChain(projectId!);
+
+    setVoteInfoData({
+      votingPower: Number(voteInfoData[0].toString()),
+      hasVoted: voteInfoData[1],
+      isVerified: voteInfoData[2],
+      timestamp: voteInfoData[3].toString(),
+    });
+
+    setVoteAmount(Number(voteInfoData[0].toString()));
+  };
+
   useEffect(() => {
     handleGetPoll();
   }, [poolId]);
 
+  useEffect(() => {
+    userInfoDataFunction();
+    voteInfoDataFunction();
+  }, []);
+
+  console.log("userInfoData", userInfoData);
+
+  console.log("voteInfoData", voteInfoData);
+
   return (
     <div className="max-w-4xl mx-auto py-12 px-4">
-      {error && <div className="text-red-500 mb-4">{error}</div>}
-
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
         <div className="relative h-96">
           {pollData?.ipfsHash && (
@@ -164,10 +219,49 @@ function ProjectDetail() {
                 disabled={voteAmount === 0 || loading}
                 className="w-full bg-[#FE0421] text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? "Submitting..." : "Submit Votes"}
+                {voteInfoData?.hasVoted ? "RESUBMIT VOTES" : "Submit Votes"}
               </button>
             </div>
           </div>
+
+          {modalOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-xl shadow-xl w-96">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold">Confirm Your Vote</h2>
+                  <button onClick={() => setModalOpen(false)}>
+                    <X className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+
+                <p className="text-gray-600 mb-4">
+                  You are about to cast <strong>{voteAmount}</strong> votes.
+                </p>
+                <p className="text-gray-600 mb-4">
+                  Total cost:{" "}
+                  <strong className="text-red-500">
+                    {calculateQuadraticCost(voteAmount)} tokens
+                  </strong>
+                </p>
+
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => setModalOpen(false)}
+                    className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    onClick={handleVoteSubmit}
+                    className="flex-1 py-2 rounded-lg bg-[#FE0421] text-white font-semibold hover:bg-red-600 transition"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <div className="bg-[#FAFDFE] rounded-xl p-6">
@@ -179,11 +273,39 @@ function ProjectDetail() {
 
               <p className="text-2xl font-bold text-[#FE0421]">{totalVotes}</p>
             </div>
+
+            <div className="bg-[#FAFDFE] rounded-xl p-6">
+              <div className="flex items-center space-x-3 text-[#0E101A] mb-2">
+                <Vote className="w-5 h-5 text-[#FE0421]" />
+
+                <h3 className="font-semibold">Token Left</h3>
+              </div>
+
+              <p className="text-2xl font-bold text-[#FE0421]">
+                {userInfoData?.tokensLeft}
+              </p>
+            </div>
+
+            <div className="bg-[#FAFDFE] rounded-xl p-6">
+              <div className="flex items-center space-x-3 text-[#0E101A] mb-2">
+                <Vote className="w-5 h-5 text-[#FE0421]" />
+
+                <h3 className="font-semibold">QV Status</h3>
+              </div>
+
+              <p className="text-xl font-bold text-[#FE0421]">
+                {userInfoData?.isVerified ? "Enabled" : "Disabled"}
+              </p>
+            </div>
           </div>
         </div>
+
+        {error && (
+          <ErrorModal errorMessage={error} onClose={() => setError(null)} />
+        )}
       </div>
     </div>
   );
-}
+};
 
 export default ProjectDetail;

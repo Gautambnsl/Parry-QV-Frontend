@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { ImagePlus } from "lucide-react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -5,6 +6,7 @@ import { useState } from "react";
 import axios from "axios";
 import { CreateProjectValues } from "../../interface";
 import { createProjectOnChain } from "../../utils/integration";
+import ErrorModal from "../../components/ErrorModal";
 
 const CreateProject: React.FC = () => {
   const [dragActive, setDragActive] = useState<boolean>(false);
@@ -12,6 +14,8 @@ const CreateProject: React.FC = () => {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const [loading, setLoading] = useState<boolean>(false);
+
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
 
   const [error, setError] = useState<string | null>(null);
 
@@ -65,21 +69,23 @@ const CreateProject: React.FC = () => {
       tokensPerUser: "",
       tokensPerVerifiedUser: "",
       endDate: 1,
+      minScoreToJoin: 0,
+      minScoreToVerify: 0,
       image: null,
     },
 
     validationSchema: Yup.object({
       name: Yup.string().required("Project Name is required"),
       description: Yup.string().required("Description is required"),
-      tokensPerUser: Yup.number()
-        .required("Tokens per User is required")
-        .min(1, "Must be greater than zero"),
-      tokensPerVerifiedUser: Yup.number()
-        .required("Tokens per Verified User is required")
-        .min(1, "Must be greater than zero"),
+      tokensPerUser: Yup.number().required("Tokens per User is required"),
+      tokensPerVerifiedUser: Yup.number().required(
+        "Tokens per Verified User is required"
+      ),
       endDate: Yup.number()
         .required("Number of days is required")
         .min(1, "Must be greater than zero"),
+      minScoreToJoin: Yup.number().required("Score is required"),
+      minScoreToVerify: Yup.number().required("Score is required"),
       image: Yup.mixed<File>()
         .required("Image is required")
         .test(
@@ -93,14 +99,15 @@ const CreateProject: React.FC = () => {
         ),
     }),
 
-    onSubmit: async (values, { resetForm }) => {
+    onSubmit: async (values) => {
       setLoading(true);
       setError(null);
 
       try {
         const ipfsHash = await handleUploadImageToIPFS(values.image!);
         if (!ipfsHash) {
-          throw new Error("IPFS upload failed");
+          setError("IPFS upload failed");
+          return;
         }
 
         const body = {
@@ -110,23 +117,23 @@ const CreateProject: React.FC = () => {
           tokensPerUser: values.tokensPerUser,
           tokensPerVerifiedUser: values.tokensPerVerifiedUser,
           endDate: values.endDate,
+          minScoreToJoin: values.minScoreToJoin,
+          minScoreToVerify: values.minScoreToVerify,
         };
 
-        const txResult = await createProjectOnChain(body);
-        if (!txResult?.status) {
-          throw new Error("Blockchain transaction failed");
-        }
+        const txResult: any = await createProjectOnChain(body);
 
-        alert("Project created successfully!");
-        resetForm();
-        setImagePreview(null);
-      } catch (err) {
-        console.error(err);
-        if (err instanceof Error) {
-          setError(err.message || "Something went wrong. Please try again.");
+        if (txResult?.status) {
+          setModalOpen(true);
         } else {
-          setError("Something went wrong. Please try again.");
+          if (txResult?.error?.code === "ACTION_REJECTED") {
+            setError("User rejected the transaction.");
+          } else {
+            setError(`Transaction failed: ${txResult?.error?.reason}`);
+          }
         }
+      } catch {
+        setError("Something went wrong. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -166,6 +173,7 @@ const CreateProject: React.FC = () => {
     handleBlur,
     touched,
     errors,
+    resetForm,
   } = formik;
 
   return (
@@ -252,7 +260,6 @@ const CreateProject: React.FC = () => {
               onChange={handleChange}
               onBlur={handleBlur}
               value={values.tokensPerUser}
-              min="1"
               className={`w-full px-4 py-3 rounded-lg border ${
                 touched.tokensPerUser && errors.tokensPerUser
                   ? "border-red-500"
@@ -282,7 +289,6 @@ const CreateProject: React.FC = () => {
               onChange={handleChange}
               onBlur={handleBlur}
               value={values.tokensPerVerifiedUser}
-              min="1"
               className={`w-full px-4 py-3 rounded-lg border ${
                 touched.tokensPerVerifiedUser && errors.tokensPerVerifiedUser
                   ? "border-red-500"
@@ -294,6 +300,57 @@ const CreateProject: React.FC = () => {
             {touched.tokensPerVerifiedUser && errors.tokensPerVerifiedUser && (
               <p className="text-red-500 text-sm mt-1">
                 {errors.tokensPerVerifiedUser}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div>
+            <label
+              htmlFor="minScoreToJoin"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Minimum Score to Join
+            </label>
+
+            <input
+              type="number"
+              name="minScoreToJoin"
+              onChange={handleChange}
+              onBlur={handleBlur}
+              value={values.minScoreToJoin}
+              placeholder="Enter minimum score to join"
+              className="w-full px-4 py-3 rounded-lg border border-gray-300"
+            />
+
+            {touched.minScoreToJoin && errors.minScoreToJoin && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.minScoreToJoin}
+              </p>
+            )}
+          </div>
+          <div>
+            <label
+              htmlFor="minScoreToVerify"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
+              Minimum Score to Verify
+            </label>
+
+            <input
+              type="number"
+              name="minScoreToVerify"
+              onChange={handleChange}
+              onBlur={handleBlur}
+              value={values.minScoreToVerify}
+              placeholder="Enter minimum score to verify"
+              className="w-full px-4 py-3 rounded-lg border border-gray-300"
+            />
+
+            {touched.minScoreToVerify && errors.minScoreToVerify && (
+              <p className="text-red-500 text-sm mt-1">
+                {errors.minScoreToVerify}
               </p>
             )}
           </div>
@@ -313,7 +370,6 @@ const CreateProject: React.FC = () => {
             onChange={handleChange}
             onBlur={handleBlur}
             value={values.endDate}
-            min={1}
             placeholder="Enter number of days"
             className="w-full px-4 py-3 rounded-lg border border-gray-300"
           />
@@ -377,6 +433,31 @@ const CreateProject: React.FC = () => {
           {loading ? "Creating Project..." : "Create Project"}
         </button>
       </form>
+
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-xl w-96">
+            <p className="text-gray-600 mb-4">Project created successfully!</p>
+
+            <div className="flex space-x-4">
+              <button
+                onClick={() => {
+                  setModalOpen(false);
+                  resetForm();
+                  setImagePreview(null);
+                }}
+                className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <ErrorModal errorMessage={error} onClose={() => setError(null)} />
+      )}
     </div>
   );
 };

@@ -1,15 +1,18 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Globe2, Compass, Map, Vote, Heart } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getProjectInfo } from "../utils/integration";
 import { ProjectListingPage } from "../interface";
+import ErrorModal from "../components/ErrorModal";
 
-function Home() {
+const Home = () => {
   const [projectsData, setProjectsData] = useState<ProjectListingPage[]>([]);
 
   const [loading, setLoading] = useState<boolean>(true);
 
   const [error, setError] = useState<string | null>(null);
+
+  const trendingRef = useRef<HTMLDivElement | null>(null);
 
   const fetchProjectData = async () => {
     setLoading(true);
@@ -24,11 +27,7 @@ function Home() {
       }
     } catch (err) {
       console.error("Error fetching projects:", err);
-      if (err instanceof Error) {
-        setError(err.message || "Failed to load projects.");
-      } else {
-        setError("Failed to load projects.");
-      }
+      setError("Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -36,6 +35,12 @@ function Home() {
 
   const getLimitedProjects = () => {
     return projectsData.slice(0, 4);
+  };
+
+  const handleScrollToTrending = () => {
+    if (trendingRef.current) {
+      trendingRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
   useEffect(() => {
@@ -72,8 +77,8 @@ function Home() {
               </h1>
 
               <p className="text-xl text-gray-200 max-w-lg">
-                Join our vibrant community in shaping the future of travel. Your
-                vote has the power to unveil the world's hidden gems.
+                Join our vibrant community in shaping the future. Your vote has
+                the power to unveil the world's hidden gems.
               </p>
 
               <div className="flex flex-wrap gap-4">
@@ -81,20 +86,16 @@ function Home() {
                   to="/create-project"
                   className="group relative px-8 py-4 bg-[#FE0421] text-white rounded-xl font-semibold overflow-hidden"
                 >
-                  <span className="relative z-10">Submit Destination</span>
-                  <div className="absolute inset-0 bg-white transform scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300" />
-                  <span className="absolute inset-0 flex items-center justify-center text-[#FE0421] opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                    Submit Destination
-                  </span>
+                  <span className="relative z-10">Create Project</span>
                 </Link>
 
-                <Link
-                  to="/create-pool"
-                  className="group px-8 py-4 bg-white/10 backdrop-blur-lg text-white rounded-xl font-semibold border border-white/20 hover:bg-white/20 transition-colors"
+                <button
+                  onClick={handleScrollToTrending}
+                  className="group px-8 py-4 bg-white/10 backdrop-blur-lg text-white rounded-xl font-semibold border border-white/20 hover:bg-white/20 transition-colors flex items-center"
                 >
                   Start Voting
                   <ArrowRight className="inline-block ml-2 w-5 h-5 transform group-hover:translate-x-2 transition-transform" />
-                </Link>
+                </button>
               </div>
             </div>
 
@@ -126,7 +127,7 @@ function Home() {
         </div>
       </div>
 
-      <div className="py-24 bg-white">
+      <div className="py-24 bg-white" ref={trendingRef}>
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between items-end mb-12">
             <div>
@@ -149,7 +150,9 @@ function Home() {
           {loading && (
             <p className="text-gray-500 text-center">Loading projects...</p>
           )}
+
           {error && <p className="text-red-500 text-center">{error}</p>}
+
           {!loading && !error && projectsData.length === 0 && (
             <p className="text-gray-500 text-center">No projects found.</p>
           )}
@@ -183,8 +186,12 @@ function Home() {
           )}
         </div>
       </div>
+
+      {error && (
+        <ErrorModal errorMessage={error} onClose={() => setError(null)} />
+      )}
     </div>
   );
-}
+};
 
 export default Home;

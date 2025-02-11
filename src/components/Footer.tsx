@@ -18,11 +18,13 @@ const Footer = () => {
           <div className="space-y-6">
             <Link to="/" className="flex items-center space-x-2">
               <Vote className="w-8 h-8 text-[#FE0421]" />
-              <span className="text-xl font-bold text-[#0E101A]">Parry Vote</span>
+              <span className="text-xl font-bold text-[#0E101A]">
+                Parry Vote
+              </span>
             </Link>
             <p className="text-gray-600">
-              Empowering communities to discover and vote for the world's most
-              amazing destinations.
+              A decentralized voting platform where communities create, share,
+              and participate in transparent and fair polls.
             </p>
             <div className="flex space-x-4">
               <a
@@ -52,7 +54,27 @@ const Footer = () => {
             </div>
           </div>
 
-          <div></div>
+          <div>
+            <h4 className="font-semibold text-[#0E101A] mb-4">Quick Links</h4>
+            <ul className="space-y-3">
+              <li>
+                <Link
+                  to="/projects"
+                  className="text-gray-600 hover:text-[#FE0421] transition-colors"
+                >
+                  Browse Projects
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/create-project"
+                  className="text-gray-600 hover:text-[#FE0421] transition-colors"
+                >
+                  Create a Poll
+                </Link>
+              </li>
+            </ul>
+          </div>
 
           <div></div>
 

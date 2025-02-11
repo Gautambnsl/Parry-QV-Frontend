@@ -8,7 +8,7 @@ import {
   ProjectListingPage,
 } from "../interface";
 
-const FACTORY_ADDRESS = "0x5A91d637c54925092068b97e51DE64B0DAE0f48E";
+const FACTORY_ADDRESS = "0xeFE7f1ABf28C204700F15179E2019342d9fF69C0";
 const RPC_URL =
   "https://opt-sepolia.g.alchemy.com/v2/swE9yoWrnP9EzbOKdPsJD2Hk0yb3-kDr";
 
@@ -98,7 +98,7 @@ export async function getAllPollsInfo(projectId: string) {
     console.error("Error fetching polls:", err);
     return {
       status: false,
-      error: err instanceof Error ? err.message : "Failed to fetch polls",
+      error: err,
     };
   }
 }
@@ -121,8 +121,8 @@ export async function createProjectOnChain(projectData: CreateProjectValues) {
       projectData.ipfsHash,
       projectData.tokensPerUser,
       projectData.tokensPerVerifiedUser,
-      0,
-      0,
+      projectData.minScoreToJoin * 10000,
+      projectData.minScoreToVerify * 10000,
       currentTimestamp + projectData.endDate * 24 * 60 * 60
     );
 
@@ -133,7 +133,7 @@ export async function createProjectOnChain(projectData: CreateProjectValues) {
     return { status: true, receipt };
   } catch (error) {
     console.error("Error creating project on chain:", error);
-    return { status: false, error: (error as Error).message };
+    return { status: false, error: error };
   }
 }
 
@@ -148,13 +148,13 @@ export async function createPollOnChain(body: CreatePoolValues) {
       body.ipfsHash
     );
     console.log("Transaction sent:", tx.hash);
+    const receipt = await tx.wait();
+    console.log("Transaction Confirmed", receipt);
 
-    await tx.wait();
-    console.log("Transaction Confirmed");
-    return { status: true, txHash: tx.hash };
+    return { status: true, receipt };
   } catch (error) {
-    console.error("Error creating poll on blockchain:", error);
-    return { status: false, error: (error as Error).message };
+    console.error("Error creating poll on chain:", error);
+    return { status: false, error: error };
   }
 }
 
@@ -166,14 +166,14 @@ export async function joinProjectOnChain(projectId: string) {
     const tx = await contract.joinProject();
     console.log("Transaction Hash:", tx.hash);
 
-    await tx.wait();
-    console.log("Transaction Confirmed");
-    return { status: true, txHash: tx.hash };
+    const receipt = await tx.wait();
+    console.log("Transaction Confirmed", receipt);
+    return { status: true, receipt };
   } catch (err) {
     console.error("Error joining project:", err);
     return {
       status: false,
-      error: err instanceof Error ? err.message : "Failed to join project",
+      error: err,
     };
   }
 }
@@ -190,15 +190,15 @@ export async function castVoteOnChain(
     const tx = await contract.castVote(poolId, votingPower);
     console.log("Transaction Sent:", tx.hash);
 
-    await tx.wait();
-    console.log("Transaction Confirmed:", tx.hash);
+    const receipt = await tx.wait();
+    console.log("Transaction Confirmed:", receipt);
 
-    return { status: true, txHash: tx.hash };
+    return { status: true, receipt };
   } catch (err) {
     console.error("Error casting vote:", err);
     return {
       status: false,
-      error: err instanceof Error ? err.message : "Failed to cast vote",
+      error: err,
     };
   }
 }
@@ -216,7 +216,65 @@ export async function getPollInfoOnChain(projectId: string, poolId: string) {
     console.error("Error fetching poll info:", err);
     return {
       status: false,
-      error: err instanceof Error ? err.message : "Failed to fetch poll info",
+      error: err,
+    };
+  }
+}
+
+export async function getPassportScoreOnChain() {
+  try {
+    const signer = await getSigner();
+    const address = await getAddress();
+    const contract = new ethers.Contract(
+      "0xcb2144d0aFf079B959565fc9b11d4f54512f00f0",
+      qvABI.abi,
+      signer
+    );
+
+    const passportScore = await contract.getPassportScore(address);
+
+    return passportScore;
+  } catch (err) {
+    console.error("Error fetching passport score:", err);
+    return {
+      status: false,
+      error: err,
+    };
+  }
+}
+
+export async function getUserInfoOnChain(projectAddress: string) {
+  try {
+    const signer = await getSigner();
+    const address = await getAddress();
+    const contract = new ethers.Contract(projectAddress, qvABI.abi, signer);
+
+    const userInfo = await contract.getUserInfo(address);
+
+    return userInfo;
+  } catch (err) {
+    console.error("Error fetching passport score:", err);
+    return {
+      status: false,
+      error: err,
+    };
+  }
+}
+
+export async function getVoteInfoOnChain(projectAddress: string) {
+  try {
+    const signer = await getSigner();
+    const address = await getAddress();
+    const contract = new ethers.Contract(projectAddress, qvABI.abi, signer);
+
+    const voteInfo = await contract.getVoteInfo(0, address);
+
+    return voteInfo;
+  } catch (err) {
+    console.error("Error fetching passport score:", err);
+    return {
+      status: false,
+      error: err,
     };
   }
 }

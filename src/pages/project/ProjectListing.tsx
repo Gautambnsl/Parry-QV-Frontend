@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ProjectListingPage } from "../../interface";
 import { getProjectInfo } from "../../utils/integration";
+import ErrorModal from "../../components/ErrorModal";
 
 const ProjectListing = () => {
   const [projectsData, setProjectsData] = useState<ProjectListingPage[]>([]);
@@ -24,11 +25,7 @@ const ProjectListing = () => {
       }
     } catch (err) {
       console.error("Error fetching project data:", err);
-      if (err instanceof Error) {
-        setError(err.message || "Failed to fetch projects. Please try again.");
-      } else {
-        setError("Failed to fetch projects. Please try again.");
-      }
+      setError("Something went wrong.");
     } finally {
       setLoading(false);
     }
@@ -83,6 +80,10 @@ const ProjectListing = () => {
             </Link>
           ))}
         </div>
+      )}
+
+      {error && (
+        <ErrorModal errorMessage={error} onClose={() => setError(null)} />
       )}
     </div>
   );

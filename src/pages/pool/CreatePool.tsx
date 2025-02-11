@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios";
 import { useFormik } from "formik";
 import { ImagePlus } from "lucide-react";
@@ -5,6 +6,7 @@ import { useEffect, useState } from "react";
 import * as Yup from "yup";
 import { CreatePoolValues } from "../../interface";
 import { createPollOnChain, getFactoryProjects } from "../../utils/integration";
+import ErrorModal from "../../components/ErrorModal";
 
 const CreatePool = () => {
   const [dragActive, setDragActive] = useState<boolean>(false);
@@ -15,28 +17,26 @@ const CreatePool = () => {
 
   const [loading, setLoading] = useState<boolean>(false);
 
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchProjectData = async () => {
-      try {
-        const projects = await getFactoryProjects();
-        if (Array.isArray(projects)) {
-          setProjectData(projects);
-        } else {
-          console.error("Unexpected data format", projects);
-        }
-      } catch (error) {
-        console.error("Error fetching project data:", error);
+  const [modalOpen, setModalOpen] = useState<boolean>(false);
+
+  const fetchProjectData = async () => {
+    try {
+      const projects = await getFactoryProjects();
+
+      if (Array.isArray(projects)) {
+        setProjectData(projects);
       }
-    };
-
-    fetchProjectData();
-  }, []);
+    } catch (error) {
+      console.error("Error fetching project data:", error);
+      setError("Something went wrong.");
+    }
+  };
 
   const handleUploadImageToIPFS = async (image: File) => {
     setLoading(true);
-    setErrorMessage(null);
+    setError(null);
 
     try {
       const formData = new FormData();
@@ -64,11 +64,11 @@ const CreatePool = () => {
       if (response.status === 200 && response.data.IpfsHash) {
         return response.data.IpfsHash;
       } else {
-        throw new Error("Failed to upload image to IPFS");
+        setError("Failed to upload image to IPFS");
       }
     } catch (error) {
       console.error("Error uploading to Pinata:", error);
-      setErrorMessage("Failed to upload image. Please try again.");
+      setError("Something went wrong.");
       return null;
     } finally {
       setLoading(false);
@@ -100,14 +100,16 @@ const CreatePool = () => {
         ),
     }),
 
-    onSubmit: async (values, { resetForm }) => {
+    onSubmit: async (values) => {
       setLoading(true);
-      setErrorMessage(null);
+      setError(null);
 
       try {
         const ipfsHash = await handleUploadImageToIPFS(values.image!);
-        if (!ipfsHash) return;
-
+        if (!ipfsHash) {
+          setError("IPFS upload failed");
+          return;
+        }
         const payload: CreatePoolValues = {
           name: values.name,
           description: values.description,
@@ -115,12 +117,19 @@ const CreatePool = () => {
           ipfsHash,
         };
 
-        await createPollOnChain(payload);
-        resetForm();
-        setImagePreview(null);
-      } catch (error) {
-        console.error("Error creating pool:", error);
-        setErrorMessage("Failed to create pool. Please try again.");
+        const txResult: any = await createPollOnChain(payload);
+
+        if (txResult?.status) {
+          setModalOpen(true);
+        } else {
+          if (txResult?.error?.code === "ACTION_REJECTED") {
+            setError("User rejected the transaction.");
+          } else {
+            setError(`Transaction failed: ${txResult?.error?.reason}`);
+          }
+        }
+      } catch {
+        setError("Something went wrong. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -160,7 +169,12 @@ const CreatePool = () => {
     handleBlur,
     touched,
     errors,
+    resetForm,
   } = formik;
+
+  useEffect(() => {
+    fetchProjectData();
+  }, []);
 
   return (
     <div className="max-w-3xl mx-auto py-12 px-4">
@@ -317,10 +331,35 @@ const CreatePool = () => {
           {loading ? "Creating..." : "Create Pool"}
         </button>
 
-        {errorMessage && (
-          <p className="text-red-500 text-sm mt-2">{errorMessage}</p>
+        {error && (
+          <ErrorModal errorMessage={error} onClose={() => setError(null)} />
         )}
       </form>
+
+      {modalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-xl shadow-xl w-96">
+            <p className="text-gray-600 mb-4">Pool created successfully!</p>
+
+            <div className="flex space-x-4">
+              <button
+                onClick={() => {
+                  setModalOpen(false);
+                  resetForm();
+                  setImagePreview(null);
+                }}
+                className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <ErrorModal errorMessage={error} onClose={() => setError(null)} />
+      )}
     </div>
   );
 };
