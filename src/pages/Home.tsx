@@ -60,7 +60,7 @@ const Home = () => {
               <div className="inline-flex items-center space-x-2 bg-white/10 backdrop-blur-lg px-4 py-2 rounded-full">
                 <Vote className="w-5 h-5 text-[#FE0421]" />
                 <span className="text-white font-medium">
-                  Welcome to Parry Vote
+                  Welcome to Optimistic Vote
                 </span>
               </div>
 
@@ -135,7 +135,7 @@ const Home = () => {
                 Trending Project
               </h2>
               <p className="text-gray-600">
-                Vote for your favorite places and help them reach the top
+                Vote for your favorite projects and help them reach the top
               </p>
             </div>
             <Link
@@ -161,7 +161,7 @@ const Home = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {getLimitedProjects().map((item: ProjectListingPage) => (
                 <Link
-                  to={`/project/${item.id}`}
+                  to={`/projects/${item.id}`}
                   key={item.id}
                   className="group relative aspect-[3/4] rounded-2xl overflow-hidden transform transition-transform duration-300 hover:scale-105"
                 >

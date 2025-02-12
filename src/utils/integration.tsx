@@ -3,12 +3,12 @@ import { ethers } from "ethers";
 import factoryABI from "../utils/factory.json";
 import qvABI from "../utils/qv.json";
 import {
-  CreatePoolValues,
+  CreatePollValues,
   CreateProjectValues,
   ProjectListingPage,
 } from "../interface";
 
-const FACTORY_ADDRESS = "0xeFE7f1ABf28C204700F15179E2019342d9fF69C0";
+const FACTORY_ADDRESS = "0x64B945555203fD08b2582aad08b570E2666A2039";
 const RPC_URL =
   "https://opt-sepolia.g.alchemy.com/v2/swE9yoWrnP9EzbOKdPsJD2Hk0yb3-kDr";
 
@@ -137,10 +137,10 @@ export async function createProjectOnChain(projectData: CreateProjectValues) {
   }
 }
 
-export async function createPollOnChain(body: CreatePoolValues) {
+export async function createPollOnChain(body: CreatePollValues) {
   try {
     const signer = await getSigner();
-    const contract = new ethers.Contract(body.projectId, qvABI.abi, signer);
+    const contract = new ethers.Contract(body.projectId!, qvABI.abi, signer);
 
     const tx = await contract.createPoll(
       body.name,
@@ -180,14 +180,14 @@ export async function joinProjectOnChain(projectId: string) {
 
 export async function castVoteOnChain(
   projectId: string,
-  poolId: number,
+  pollId: number,
   votingPower: number
 ) {
   try {
     const signer = await getSigner();
     const contract = new ethers.Contract(projectId, qvABI.abi, signer);
 
-    const tx = await contract.castVote(poolId, votingPower);
+    const tx = await contract.castVote(pollId, votingPower);
     console.log("Transaction Sent:", tx.hash);
 
     const receipt = await tx.wait();
@@ -203,12 +203,12 @@ export async function castVoteOnChain(
   }
 }
 
-export async function getPollInfoOnChain(projectId: string, poolId: string) {
+export async function getPollInfoOnChain(projectId: string, pollId: string) {
   try {
     const signer = await getSigner();
     const contract = new ethers.Contract(projectId, qvABI.abi, signer);
 
-    const pollData = await contract.getPollInfo(poolId);
+    const pollData = await contract.getPollInfo(pollId);
     console.log("Fetched Poll Info:", pollData);
 
     return pollData;
@@ -233,7 +233,7 @@ export async function getPassportScoreOnChain() {
 
     const passportScore = await contract.getPassportScore(address);
 
-    return passportScore;
+    return { status: true, passportScore };
   } catch (err) {
     console.error("Error fetching passport score:", err);
     return {
@@ -261,13 +261,13 @@ export async function getUserInfoOnChain(projectAddress: string) {
   }
 }
 
-export async function getVoteInfoOnChain(projectAddress: string) {
+export async function getVoteInfoOnChain(projectAddress: string, pollId: string) {
   try {
     const signer = await getSigner();
     const address = await getAddress();
     const contract = new ethers.Contract(projectAddress, qvABI.abi, signer);
 
-    const voteInfo = await contract.getVoteInfo(0, address);
+    const voteInfo = await contract.getVoteInfo(pollId, address);
 
     return voteInfo;
   } catch (err) {

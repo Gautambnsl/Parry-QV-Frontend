@@ -6,9 +6,9 @@ import Footer from "./components/Footer";
 
 import Home from "./pages/Home";
 import ProjectListing from "./pages/project/ProjectListing";
-import PoolListing from "./pages/pool/PoolListing";
+import PollListing from "./pages/poll/PollListing";
 import ProjectDetail from "./pages/project/ProjectDetail";
-import CreatePool from "./pages/pool/CreatePool";
+import CreatePoll from "./pages/poll/CreatePoll";
 import CreateProject from "./pages/project/CreateProject";
 
 const App = () => {
@@ -25,12 +25,12 @@ const App = () => {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/projects" element={<ProjectListing />} />
-          <Route path="/projects/:projectId" element={<PoolListing />} />
+          <Route path="/projects/:projectId" element={<PollListing />} />
           <Route
-            path="/projects/:projectId/pools/:poolId"
+            path="/projects/:projectId/polls/:pollId"
             element={<ProjectDetail />}
           />
-          <Route path="/create-pool" element={<CreatePool />} />
+          <Route path="/projects/:projectId/create-poll" element={<CreatePoll />} />
           <Route path="/create-project" element={<CreateProject />} />
         </Routes>
       </div>

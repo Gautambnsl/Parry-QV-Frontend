@@ -10,15 +10,15 @@ export interface CreateProjectValues {
   image?: File | null;
 }
 
-export interface CreatePoolValues {
+export interface CreatePollValues {
   name: string;
   description: string;
-  projectId: string;
+  projectId?: string;
   image?: File | null;
   ipfsHash?: string;
 }
 
-export interface PoolListingPage {
+export interface PollListingPage {
   name: string;
   description: string;
   ipfsHash: string;

@@ -8,13 +8,13 @@ import {
   getVoteInfoOnChain,
 } from "../../utils/integration";
 import { BigNumber } from "ethers";
-import { PoolListingPage, UserInfoPage } from "../../interface";
+import { PollListingPage, UserInfoPage } from "../../interface";
 import ErrorModal from "../../components/ErrorModal";
 
 const ProjectDetail = () => {
-  const [pollData, setPollData] = useState<PoolListingPage | null>(null);
+  const [pollData, setPollData] = useState<PollListingPage | null>(null);
 
-  const { poolId, projectId } = useParams();
+  const { pollId, projectId } = useParams();
 
   const [voteInfoData, setVoteInfoData] = useState<any>();
 
@@ -39,21 +39,27 @@ const ProjectDetail = () => {
   };
 
   const handleVoteSubmit = async () => {
-    if (voteAmount > 0 && projectId && poolId) {
+    if (voteAmount > 1 && !userInfoData?.isVerified) {
+      setError("You are not verified to vote.");
+      return;
+    }
+
+    if (voteAmount > 0 && projectId && pollId) {
       setLoading(true);
       setModalOpen(false);
       try {
-        const response: any = await castVoteOnChain(
+        const txResult: any = await castVoteOnChain(
           projectId,
-          Number(poolId),
+          Number(pollId),
           voteAmount
         );
 
-        if (response.status) {
-          setTotalVotes((prev) => prev + voteAmount);
+        if (txResult?.status) {
           setVoteAmount(0);
+        } else if (txResult?.error?.code === "ACTION_REJECTED") {
+          setError("User rejected the transaction.");
         } else {
-          setError("Something went wrong.");
+          setError(`Transaction failed: ${txResult?.error?.reason}`);
         }
       } catch (err) {
         console.log("Error:", err);
@@ -64,11 +70,11 @@ const ProjectDetail = () => {
   };
 
   const handleGetPoll = async () => {
-    if (!projectId || !poolId) return;
+    if (!projectId || !pollId) return;
     setLoading(true);
 
     try {
-      const pollData = await getPollInfoOnChain(projectId, poolId);
+      const pollData = await getPollInfoOnChain(projectId, pollId);
 
       setPollData({
         name: pollData[0],
@@ -104,7 +110,7 @@ const ProjectDetail = () => {
         totalVotesCast: userInfoData[5].toString(),
       });
     } catch (err) {
-      console.error("Error fetching pools:", err);
+      console.error("Error fetching pols:", err);
       setError("Something went wrong.");
     } finally {
       setLoading(false);
@@ -112,7 +118,7 @@ const ProjectDetail = () => {
   };
 
   const voteInfoDataFunction = async () => {
-    const voteInfoData = await getVoteInfoOnChain(projectId!);
+    const voteInfoData = await getVoteInfoOnChain(projectId!, pollId!);
 
     setVoteInfoData({
       votingPower: Number(voteInfoData[0].toString()),
@@ -126,16 +132,12 @@ const ProjectDetail = () => {
 
   useEffect(() => {
     handleGetPoll();
-  }, [poolId]);
+  }, [pollId]);
 
   useEffect(() => {
     userInfoDataFunction();
     voteInfoDataFunction();
   }, []);
-
-  console.log("userInfoData", userInfoData);
-
-  console.log("voteInfoData", voteInfoData);
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4">
@@ -263,15 +265,27 @@ const ProjectDetail = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-[#FAFDFE] rounded-xl p-6">
               <div className="flex items-center space-x-3 text-[#0E101A] mb-2">
                 <Vote className="w-5 h-5 text-[#FE0421]" />
 
-                <h3 className="font-semibold">Total Votes</h3>
+                <h3 className="font-semibold">Total Participants</h3>
               </div>
 
               <p className="text-2xl font-bold text-[#FE0421]">{totalVotes}</p>
+            </div>
+
+            <div className="bg-[#FAFDFE] rounded-xl p-6">
+              <div className="flex items-center space-x-3 text-[#0E101A] mb-2">
+                <Vote className="w-5 h-5 text-[#FE0421]" />
+
+                <h3 className="font-semibold">Your Votes Cast</h3>
+              </div>
+
+              <p className="text-2xl font-bold text-[#FE0421]">
+                {voteInfoData?.votingPower}
+              </p>
             </div>
 
             <div className="bg-[#FAFDFE] rounded-xl p-6">

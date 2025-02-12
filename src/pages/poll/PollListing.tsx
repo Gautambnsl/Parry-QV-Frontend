@@ -1,16 +1,26 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, Users } from "lucide-react";
-import { PoolListingPage, UserInfoPage } from "../../interface";
+import {
+  PollListingPage,
+  ProjectListingPage,
+  UserInfoPage,
+} from "../../interface";
 import { useEffect, useState } from "react";
 import {
   getAllPollsInfo,
+  getPassportScoreOnChain,
+  getProjectInfo,
   getUserInfoOnChain,
   joinProjectOnChain,
 } from "../../utils/integration";
 import ErrorModal from "../../components/ErrorModal";
 
-const PoolListing = () => {
-  const [pollData, setPollData] = useState<PoolListingPage[]>([]);
+const PollListing = () => {
+  const [projectsData, setProjectsData] = useState<ProjectListingPage>();
+
+  const [passportScore, setPassportScore] = useState<string>("");
+
+  const [pollData, setPollData] = useState<PollListingPage[]>([]);
 
   const [userInfoData, setUserInfoData] = useState<UserInfoPage>();
 
@@ -23,7 +33,7 @@ const PoolListing = () => {
   const { projectId } = useParams();
   const navigate = useNavigate();
 
-  const fetchProjectData = async () => {
+  const fetchPollData = async () => {
     setLoading(true);
     setError(null);
 
@@ -35,7 +45,7 @@ const PoolListing = () => {
         throw new Error("Unexpected response format from API");
       }
     } catch (err) {
-      console.error("Error fetching pools:", err);
+      console.error("Error fetching polls:", err);
       setError("Something went wrong.");
     } finally {
       setLoading(false);
@@ -58,48 +68,88 @@ const PoolListing = () => {
         totalVotesCast: userInfoData[5].toString(),
       });
     } catch (err) {
-      console.error("Error fetching pools:", err);
+      console.error("Error fetching polls:", err);
       setError("Something went wrong.");
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchPassportScore = async () => {
+    const score = await getPassportScoreOnChain();
+
+    console.log("score", score);
+
+    if (score?.status) {
+      setPassportScore(
+        (Number(score?.passportScore?.toString()) / 10000).toFixed(2)
+      );
+    }
+  };
+
   const handleJoinProject = async () => {
     try {
-      const response = await joinProjectOnChain(projectId!);
-      if (response.status) {
+      if (!passportScore) {
+        setError("You are not registered on the gitcoin passport.");
+        return;
+      }
+
+      const txResult: any = await joinProjectOnChain(projectId!);
+
+      if (txResult?.status) {
         setModalOpen(true);
+      } else if (txResult?.error?.code === "ACTION_REJECTED") {
+        setError("User rejected the transaction.");
+      } else {
+        setError(`Transaction failed: ${txResult?.error?.reason}`);
       }
     } catch (err) {
       setError("Something went wrong.");
     }
   };
 
-  useEffect(() => {
-    fetchProjectData();
-    userInfoDataFunction();
-  }, []);
+  const fetchProjectData = async () => {
+    setLoading(true);
+    setError(null);
 
-  console.log("userInfoData", userInfoData);
+    try {
+      const projectData = await getProjectInfo();
+
+      if (Array.isArray(projectData)) {
+        const project = projectData.find((project) => project.id === projectId);
+        setProjectsData(project);
+      } else {
+        throw new Error("Unexpected response format from API");
+      }
+    } catch (err) {
+      console.error("Error fetching project data:", err);
+      setError("Something went wrong.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPassportScore();
+    fetchPollData();
+    userInfoDataFunction();
+    fetchProjectData();
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto py-12 px-4">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-4xl font-bold text-[#0E101A] mb-4">Pools</h1>
+          <h1 className="text-4xl font-bold text-[#0E101A] mb-4">Polls</h1>
           <p className="text-gray-600 mb-6">
-            Browse all available voting pools
+            Browse all available voting polls. Minimum score to join project{" "}
+            {(Number(projectsData?.minScoreToJoin) / 10000).toFixed(2)} and
+            minimum score to be considered verified{" "}
+            {(Number(projectsData?.minScoreToVerify) / 10000).toFixed(2)}
           </p>
         </div>
         <div className="flex">
-          <button
-            onClick={handleJoinProject}
-            className="inline-block bg-[#FE0421] text-white px-5 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300"
-          >
-            <span>Token Balance: {userInfoData?.tokensLeft}</span>
-          </button>
-          {!userInfoData?.isRegistered && (
+          {!userInfoData?.isRegistered ? (
             <button
               onClick={handleJoinProject}
               className="inline-block bg-[#FE0421] text-white px-5 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300 flex gap-2 items-center ml-2"
@@ -107,12 +157,19 @@ const PoolListing = () => {
               <span>Join Project</span>
               <ArrowRight className="w-5 h-5" />
             </button>
+          ) : (
+            <button
+              onClick={handleJoinProject}
+              className="inline-block bg-[#FE0421] text-white px-5 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300"
+            >
+              <span>Token Balance: {userInfoData?.tokensLeft}</span>
+            </button>
           )}
           <Link
-            to="/create-pool"
+            to={`/projects/${projectId}/create-poll`}
             className="inline-block bg-[#FE0421] text-white px-5 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300 ml-2"
           >
-            Create Pool
+            Create Poll
           </Link>
         </div>
       </div>
@@ -127,7 +184,7 @@ const PoolListing = () => {
 
       {loading && (
         <div className="text-center text-gray-500 text-xl">
-          Loading pools...
+          Loading polls...
         </div>
       )}
 
@@ -135,28 +192,28 @@ const PoolListing = () => {
 
       {!loading && !error && pollData.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {pollData.map((pool, index: number) => (
+          {pollData.map((poll, index: number) => (
             <Link
-              key={pool.creator}
-              to={`pools/${index}`}
+              key={poll.creator}
+              to={`polls/${index}`}
               className="group bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300"
             >
               <div className="relative h-48">
                 <img
-                  src={`https://amaranth-personal-slug-526.mypinata.cloud/ipfs/${pool.ipfsHash}`}
-                  alt={pool.name}
+                  src={`https://amaranth-personal-slug-526.mypinata.cloud/ipfs/${poll.ipfsHash}`}
+                  alt={poll.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   loading="lazy"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4">
-                  <h2 className="text-xl font-bold text-white">{pool.name}</h2>
+                  <h2 className="text-xl font-bold text-white">{poll.name}</h2>
                 </div>
               </div>
 
               <div className="p-6">
                 <p className="text-gray-600 mb-4 line-clamp-2">
-                  {pool.description}
+                  {poll.description}
                 </p>
 
                 <div className="flex items-center justify-between text-sm">
@@ -165,13 +222,13 @@ const PoolListing = () => {
                     <span>Total Participants:</span>
                   </div>
                   <span className="font-medium text-[#FE0421]">
-                    {pool.totalParticipants.toString()}
+                    {poll.totalParticipants.toString()}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between text-sm mt-3">
                   <span className="font-medium text-[#FE0421]">
-                    {pool.isActive ? "Active" : "Inactive"}
+                    {poll.isActive ? "Active" : "Inactive"}
                   </span>
                 </div>
               </div>
@@ -182,7 +239,7 @@ const PoolListing = () => {
         !loading &&
         !error && (
           <div className="text-center text-gray-500 text-xl">
-            No pools available.
+            No polls available.
           </div>
         )
       )}
@@ -216,4 +273,4 @@ const PoolListing = () => {
   );
 };
 
-export default PoolListing;
+export default PollListing;

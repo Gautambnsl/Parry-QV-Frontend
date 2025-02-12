@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { ImagePlus } from "lucide-react";
+import { ImagePlus, Info } from "lucide-react";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import { useState } from "react";
@@ -125,12 +125,10 @@ const CreateProject: React.FC = () => {
 
         if (txResult?.status) {
           setModalOpen(true);
+        } else if (txResult?.error?.code === "ACTION_REJECTED") {
+          setError("User rejected the transaction.");
         } else {
-          if (txResult?.error?.code === "ACTION_REJECTED") {
-            setError("User rejected the transaction.");
-          } else {
-            setError(`Transaction failed: ${txResult?.error?.reason}`);
-          }
+          setError(`Transaction failed: ${txResult?.error?.reason}`);
         }
       } catch {
         setError("Something went wrong. Please try again.");
@@ -193,12 +191,17 @@ const CreateProject: React.FC = () => {
         className="bg-white rounded-2xl shadow-xl p-8 space-y-6"
       >
         <div>
-          <label
-            htmlFor="endDate"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Project Name
-          </label>
+          <div className="flex items-center gap-2 mb-2">
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Project Name
+            </label>
+            <span title="Give your project a unique and descriptive name.">
+              <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
+            </span>
+          </div>
 
           <input
             type="text"
@@ -218,12 +221,17 @@ const CreateProject: React.FC = () => {
         </div>
 
         <div>
-          <label
-            htmlFor="description"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Description
-          </label>
+          <div className="flex items-center gap-2 mb-2">
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Description
+            </label>
+            <span title="Briefly describe what your project is about and its objectives.">
+              <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
+            </span>
+          </div>
 
           <textarea
             id="description"
@@ -247,12 +255,17 @@ const CreateProject: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label
-              htmlFor="tokensPerUser"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Tokens per User
-            </label>
+            <div className="flex items-center gap-2 mb-2">
+              <label
+                htmlFor="tokensPerUser"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Tokens per normal user
+              </label>
+              <span title="Specify the number of tokens each user will receive for participation.">
+                <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
+              </span>
+            </div>
 
             <input
               type="number"
@@ -276,12 +289,17 @@ const CreateProject: React.FC = () => {
           </div>
 
           <div>
-            <label
-              htmlFor="tokensPerVerifiedUser"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Tokens per Verified User
-            </label>
+            <div className="flex items-center gap-2 mb-2">
+              <label
+                htmlFor="tokensPerVerifiedUser"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Tokens per verified user
+              </label>
+              <span title="Enter the tokens for verified users, who may receive a different amount than regular users.">
+                <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
+              </span>
+            </div>
 
             <input
               type="number"
@@ -307,12 +325,17 @@ const CreateProject: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label
-              htmlFor="minScoreToJoin"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Minimum Score to Join
-            </label>
+            <div className="flex items-center gap-2 mb-2">
+              <label
+                htmlFor="minScoreToJoin"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Minimum Score to Join
+              </label>
+              <span title="Users must have at least this score to join the project">
+                <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
+              </span>
+            </div>
 
             <input
               type="number"
@@ -331,12 +354,17 @@ const CreateProject: React.FC = () => {
             )}
           </div>
           <div>
-            <label
-              htmlFor="minScoreToVerify"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
-              Minimum Score to Verify
-            </label>
+            <div className="flex items-center gap-2 mb-2">
+              <label
+                htmlFor="minScoreToVerify"
+                className="block text-sm font-medium text-gray-700"
+              >
+                Minimum Score to Verify
+              </label>
+              <span title="Users must meet this score threshold to be considered verified">
+                <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
+              </span>
+            </div>
 
             <input
               type="number"
@@ -357,12 +385,17 @@ const CreateProject: React.FC = () => {
         </div>
 
         <div>
-          <label
-            htmlFor="endDate"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Number of Days
-          </label>
+          <div className="flex items-center gap-2 mb-2">
+            <label
+              htmlFor="endDate"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Number of Days
+            </label>
+            <span title="Set the duration for how long this project will be active.">
+              <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
+            </span>
+          </div>
 
           <input
             type="number"

@@ -1,19 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import axios from "axios";
 import { useFormik } from "formik";
-import { ImagePlus } from "lucide-react";
-import { useEffect, useState } from "react";
+import { ImagePlus, Info } from "lucide-react";
+import { useState } from "react";
 import * as Yup from "yup";
-import { CreatePoolValues } from "../../interface";
-import { createPollOnChain, getFactoryProjects } from "../../utils/integration";
+import { CreatePollValues } from "../../interface";
+import { createPollOnChain } from "../../utils/integration";
 import ErrorModal from "../../components/ErrorModal";
+import { useParams } from "react-router-dom";
 
-const CreatePool = () => {
+const CreatePoll = () => {
   const [dragActive, setDragActive] = useState<boolean>(false);
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
-
-  const [projectData, setProjectData] = useState<string[]>([]);
 
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -21,18 +20,7 @@ const CreatePool = () => {
 
   const [modalOpen, setModalOpen] = useState<boolean>(false);
 
-  const fetchProjectData = async () => {
-    try {
-      const projects = await getFactoryProjects();
-
-      if (Array.isArray(projects)) {
-        setProjectData(projects);
-      }
-    } catch (error) {
-      console.error("Error fetching project data:", error);
-      setError("Something went wrong.");
-    }
-  };
+  const { projectId } = useParams();
 
   const handleUploadImageToIPFS = async (image: File) => {
     setLoading(true);
@@ -75,18 +63,16 @@ const CreatePool = () => {
     }
   };
 
-  const formik = useFormik<CreatePoolValues>({
+  const formik = useFormik<CreatePollValues>({
     initialValues: {
       name: "",
       description: "",
-      projectId: "",
       image: null,
     },
 
     validationSchema: Yup.object({
-      name: Yup.string().required("Pool Title is required"),
+      name: Yup.string().required("Poll Title is required"),
       description: Yup.string().required("Description is required"),
-      projectId: Yup.string().required("Project ID is required"),
       image: Yup.mixed<File>()
         .required("Image is required")
         .test(
@@ -110,23 +96,23 @@ const CreatePool = () => {
           setError("IPFS upload failed");
           return;
         }
-        const payload: CreatePoolValues = {
+        const payload: CreatePollValues = {
           name: values.name,
           description: values.description,
-          projectId: values.projectId,
+          projectId: projectId!,
           ipfsHash,
         };
 
         const txResult: any = await createPollOnChain(payload);
-
+        
         if (txResult?.status) {
           setModalOpen(true);
+        } else if (txResult?.error?.error?.code === -32603) {
+          setError("Please join the project to cast the vote");
+        } else if (txResult?.error?.code === "ACTION_REJECTED") {
+          setError("User rejected the transaction.");
         } else {
-          if (txResult?.error?.code === "ACTION_REJECTED") {
-            setError("User rejected the transaction.");
-          } else {
-            setError(`Transaction failed: ${txResult?.error?.reason}`);
-          }
+          setError(`Transaction failed: ${txResult?.error?.reason}`);
         }
       } catch {
         setError("Something went wrong. Please try again.");
@@ -172,19 +158,15 @@ const CreatePool = () => {
     resetForm,
   } = formik;
 
-  useEffect(() => {
-    fetchProjectData();
-  }, []);
-
   return (
     <div className="max-w-3xl mx-auto py-12 px-4">
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-[#0E101A] mb-4">
-          Create a New Pool
+          Create a New Poll
         </h1>
 
         <p className="text-gray-600">
-          Set up a new voting pool for your community
+          Set up a new voting poll for your community
         </p>
       </div>
 
@@ -193,12 +175,17 @@ const CreatePool = () => {
         className="bg-white rounded-2xl shadow-xl p-8 space-y-6"
       >
         <div>
-          <label
-            htmlFor="name"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Pool Title
-          </label>
+          <div className="flex items-center gap-2 mb-2">
+            <label
+              htmlFor="name"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Poll Title
+            </label>
+            <span title="Give your poll a unique and descriptive name.">
+              <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
+            </span>
+          </div>
 
           <input
             id="name"
@@ -210,7 +197,7 @@ const CreatePool = () => {
             className={`w-full px-4 py-3 rounded-lg border ${
               touched.name && errors.name ? "border-red-500" : "border-gray-300"
             } focus:ring-2 focus:ring-[#FE0421] focus:border-transparent`}
-            placeholder="Enter pool title"
+            placeholder="Enter poll title"
           />
 
           {touched.name && errors.name && (
@@ -219,12 +206,17 @@ const CreatePool = () => {
         </div>
 
         <div>
-          <label
-            htmlFor="projectId"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Description
-          </label>
+          <div className="flex items-center gap-2 mb-2">
+            <label
+              htmlFor="description"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Description
+            </label>
+            <span title="Briefly describe what your poll is about and its objectives.">
+              <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
+            </span>
+          </div>
 
           <textarea
             name="description"
@@ -237,43 +229,11 @@ const CreatePool = () => {
                 ? "border-red-500"
                 : "border-gray-300"
             } focus:ring-2 focus:ring-[#FE0421] focus:border-transparent`}
-            placeholder="Describe your pool"
+            placeholder="Describe your poll"
           />
 
           {touched.description && errors.description && (
             <p className="text-red-500 text-sm mt-1">{errors.description}</p>
-          )}
-        </div>
-
-        <div>
-          <label
-            htmlFor="projectId"
-            className="block text-sm font-medium text-gray-700 mb-2"
-          >
-            Project ID
-          </label>
-
-          <select
-            name="projectId"
-            onChange={handleChange}
-            onBlur={handleBlur}
-            value={values.projectId}
-            className={`w-full px-4 py-3 rounded-lg border ${
-              touched.projectId && errors.projectId
-                ? "border-red-500"
-                : "border-gray-300"
-            } focus:ring-2 focus:ring-[#FE0421] focus:border-transparent`}
-          >
-            <option value="">Select Project ID</option>
-            {projectData.map((project) => (
-              <option key={project} value={project}>
-                {project}
-              </option>
-            ))}
-          </select>
-
-          {touched.projectId && errors.projectId && (
-            <p className="text-red-500 text-sm mt-1">{errors.projectId}</p>
           )}
         </div>
 
@@ -297,7 +257,9 @@ const CreatePool = () => {
                 />
               ) : (
                 <>
-                  <ImagePlus className="w-12 h-12 text-[#FE0421] mb-4" />
+                  <span title="Upload an image for your poll. PNG, JPG, or WEBP only.">
+                    <ImagePlus className="w-12 h-12 text-[#FE0421] mb-4" />
+                  </span>
                   <p className="mb-2 text-sm text-gray-500">
                     <span className="font-semibold">Click to upload</span> or
                     drag and drop
@@ -328,7 +290,7 @@ const CreatePool = () => {
           disabled={loading}
           className="w-full bg-[#FE0421] text-white py-4 px-6 rounded-lg font-semibold hover:bg-red-600 transition-colors"
         >
-          {loading ? "Creating..." : "Create Pool"}
+          {loading ? "Creating..." : "Create Poll"}
         </button>
 
         {error && (
@@ -339,7 +301,7 @@ const CreatePool = () => {
       {modalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-xl shadow-xl w-96">
-            <p className="text-gray-600 mb-4">Pool created successfully!</p>
+            <p className="text-gray-600 mb-4">Poll created successfully!</p>
 
             <div className="flex space-x-4">
               <button
@@ -364,4 +326,4 @@ const CreatePool = () => {
   );
 };
 
-export default CreatePool;
+export default CreatePoll;

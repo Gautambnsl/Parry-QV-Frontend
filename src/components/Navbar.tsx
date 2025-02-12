@@ -94,8 +94,11 @@ const Navbar = () => {
 
   const fetchPassportScore = async () => {
     const score = await getPassportScoreOnChain();
-    if (score.status !== false) {
-      setPassportScore(score.toString());
+
+    if (score?.status) {
+      setPassportScore(
+        (Number(score?.passportScore?.toString()) / 10000).toFixed(2)
+      );
     }
   };
 
@@ -169,7 +172,7 @@ const Navbar = () => {
             <Link to="/" className="flex items-center space-x-2">
               <Vote className="w-8 h-8 text-[#FE0421]" />
               <span className="text-xl font-bold text-[#0E101A]">
-                Parry Vote
+                Optimistic Vote
               </span>
             </Link>
           </div>
