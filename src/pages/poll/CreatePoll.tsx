@@ -5,7 +5,7 @@ import { ImagePlus, Info } from "lucide-react";
 import { useState } from "react";
 import * as Yup from "yup";
 import { CreatePollValues } from "../../interface";
-import { createPollOnChain } from "../../utils/integration";
+import { createPollOnChain, getTransactionHash } from "../../utils/integration";
 import ErrorModal from "../../components/ErrorModal";
 import { useParams } from "react-router-dom";
 
@@ -96,23 +96,41 @@ const CreatePoll = () => {
           setError("IPFS upload failed");
           return;
         }
-        const payload: CreatePollValues = {
-          name: values.name,
-          description: values.description,
-          projectId: projectId!,
-          ipfsHash,
-        };
 
-        const txResult: any = await createPollOnChain(payload);
-        
-        if (txResult?.status) {
-          setModalOpen(true);
-        } else if (txResult?.error?.error?.code === -32603) {
-          setError("Please join the project to cast the vote");
-        } else if (txResult?.error?.code === "ACTION_REJECTED") {
-          setError("User rejected the transaction.");
+        const body = [values.name, values.description, ipfsHash];
+
+        const txHash: any = await getTransactionHash("createPoll", body, 2);
+
+        if (txHash?.status) {
+          const checkIfWalletIsConnected = async () => {
+            try {
+              const accounts = await window.ethereum.request({
+                method: "eth_accounts",
+              });
+              if (accounts.length > 0) {
+                return accounts[0];
+              }
+            } catch (error) {
+              console.error("Failed to check wallet connection:", error);
+            }
+          };
+
+          const body = {
+            sender: await checkIfWalletIsConnected(),
+            txData: txHash?.txData,
+            contractAddress: projectId,
+          };
+
+          const sendData = axios.post(
+            "https://parry-qv-backend.onrender.com/QV-execute-meta-transaction",
+            body
+          );
+
+          if (sendData.status) {
+            setModalOpen(true);
+          }
         } else {
-          setError(`Transaction failed: ${txResult?.error?.reason}`);
+          setError(`Transaction failed: ${txHash?.error}`);
         }
       } catch {
         setError("Something went wrong. Please try again.");

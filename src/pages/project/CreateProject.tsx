@@ -5,7 +5,7 @@ import * as Yup from "yup";
 import { useState } from "react";
 import axios from "axios";
 import { CreateProjectValues } from "../../interface";
-import { createProjectOnChain } from "../../utils/integration";
+import { getTransactionHash } from "../../utils/integration";
 import ErrorModal from "../../components/ErrorModal";
 
 const CreateProject: React.FC = () => {
@@ -110,25 +110,48 @@ const CreateProject: React.FC = () => {
           return;
         }
 
-        const body = {
-          name: values.name,
-          description: values.description,
+        const body = [
+          values.name,
+          values.description,
           ipfsHash,
-          tokensPerUser: values.tokensPerUser,
-          tokensPerVerifiedUser: values.tokensPerVerifiedUser,
-          endDate: values.endDate,
-          minScoreToJoin: values.minScoreToJoin,
-          minScoreToVerify: values.minScoreToVerify,
-        };
+          values.tokensPerUser,
+          values.tokensPerVerifiedUser,
+          values.minScoreToJoin * 10000,
+          values.minScoreToVerify * 10000,
+          new Date().getTime() + values.endDate * 24 * 60 * 60 * 1000,
+        ];
 
-        const txResult: any = await createProjectOnChain(body);
+        const txHash = await getTransactionHash("createProject", body, 1);
 
-        if (txResult?.status) {
-          setModalOpen(true);
-        } else if (txResult?.error?.code === "ACTION_REJECTED") {
-          setError("User rejected the transaction.");
+        if (txHash?.status) {
+          const checkIfWalletIsConnected = async () => {
+            try {
+              const accounts = await window.ethereum.request({
+                method: "eth_accounts",
+              });
+              if (accounts.length > 0) {
+                return accounts[0];
+              }
+            } catch (error) {
+              console.error("Failed to check wallet connection:", error);
+            }
+          };
+
+          const body = {
+            sender: await checkIfWalletIsConnected(),
+            txData: txHash?.txData,
+          };
+
+          const sendData = axios.post(
+            "https://parry-qv-backend.onrender.com/factory-execute-meta-transaction",
+            body
+          );
+
+          if (sendData.status) {
+            setModalOpen(true);
+          }
         } else {
-          setError(`Transaction failed: ${txResult?.error?.reason}`);
+          setError(`Transaction failed: ${txHash?.error}`);
         }
       } catch {
         setError("Something went wrong. Please try again.");

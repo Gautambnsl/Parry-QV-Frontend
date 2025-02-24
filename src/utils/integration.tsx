@@ -8,7 +8,7 @@ import {
   ProjectListingPage,
 } from "../interface";
 
-const FACTORY_ADDRESS = "0x64B945555203fD08b2582aad08b570E2666A2039";
+const FACTORY_ADDRESS = "0x64a107b6720a23F501408090879d4455eB23A9e4";
 const RPC_URL =
   "https://opt-sepolia.g.alchemy.com/v2/swE9yoWrnP9EzbOKdPsJD2Hk0yb3-kDr";
 
@@ -103,80 +103,80 @@ export async function getAllPollsInfo(projectId: string) {
   }
 }
 
-export async function createProjectOnChain(projectData: CreateProjectValues) {
-  try {
-    const signer = await getSigner();
-    const contract = new ethers.Contract(
-      FACTORY_ADDRESS,
-      factoryABI.abi,
-      signer
-    );
+// export async function createProjectOnChain(projectData: CreateProjectValues) {
+//   try {
+//     const signer = await getSigner();
+//     const contract = new ethers.Contract(
+//       FACTORY_ADDRESS,
+//       factoryABI.abi,
+//       signer
+//     );
 
-    const block = await signer.provider?.getBlock("latest");
-    const currentTimestamp = block?.timestamp || 0;
+//     const block = await signer.provider?.getBlock("latest");
+//     const currentTimestamp = block?.timestamp || 0;
 
-    const tx = await contract.createProject(
-      projectData.name,
-      projectData.description,
-      projectData.ipfsHash,
-      projectData.tokensPerUser,
-      projectData.tokensPerVerifiedUser,
-      projectData.minScoreToJoin * 10000,
-      projectData.minScoreToVerify * 10000,
-      currentTimestamp + projectData.endDate * 24 * 60 * 60
-    );
+//     const tx = await contract.createProject(
+//       projectData.name,
+//       projectData.description,
+//       projectData.ipfsHash,
+//       projectData.tokensPerUser,
+//       projectData.tokensPerVerifiedUser,
+//       projectData.minScoreToJoin * 10000,
+//       projectData.minScoreToVerify * 10000,
+//       currentTimestamp + projectData.endDate * 24 * 60 * 60
+//     );
 
-    console.log("Transaction sent:", tx.hash);
-    const receipt = await tx.wait();
-    console.log("Transaction confirmed:", receipt);
+//     console.log("Transaction sent:", tx.hash);
+//     const receipt = await tx.wait();
+//     console.log("Transaction confirmed:", receipt);
 
-    return { status: true, receipt };
-  } catch (error) {
-    console.error("Error creating project on chain:", error);
-    return { status: false, error: error };
-  }
-}
+//     return { status: true, receipt };
+//   } catch (error) {
+//     console.error("Error creating project on chain:", error);
+//     return { status: false, error: error };
+//   }
+// }
 
-export async function createPollOnChain(body: CreatePollValues) {
-  try {
-    const signer = await getSigner();
-    const contract = new ethers.Contract(body.projectId!, qvABI.abi, signer);
+// export async function createPollOnChain(body: CreatePollValues) {
+//   try {
+//     const signer = await getSigner();
+//     const contract = new ethers.Contract(body.projectId!, qvABI.abi, signer);
 
-    const tx = await contract.createPoll(
-      body.name,
-      body.description,
-      body.ipfsHash
-    );
-    console.log("Transaction sent:", tx.hash);
-    const receipt = await tx.wait();
-    console.log("Transaction Confirmed", receipt);
+//     const tx = await contract.createPoll(
+//       body.name,
+//       body.description,
+//       body.ipfsHash
+//     );
+//     console.log("Transaction sent:", tx.hash);
+//     const receipt = await tx.wait();
+//     console.log("Transaction Confirmed", receipt);
 
-    return { status: true, receipt };
-  } catch (error) {
-    console.error("Error creating poll on chain:", error);
-    return { status: false, error: error };
-  }
-}
+//     return { status: true, receipt };
+//   } catch (error) {
+//     console.error("Error creating poll on chain:", error);
+//     return { status: false, error: error };
+//   }
+// }
 
-export async function joinProjectOnChain(projectId: string) {
-  try {
-    const signer = await getSigner();
-    const contract = new ethers.Contract(projectId, qvABI.abi, signer);
+// export async function joinProjectOnChain(projectId: string) {
+//   try {
+//     const signer = await getSigner();
+//     const contract = new ethers.Contract(projectId, qvABI.abi, signer);
 
-    const tx = await contract.joinProject();
-    console.log("Transaction Hash:", tx.hash);
+//     const tx = await contract.joinProject();
+//     console.log("Transaction Hash:", tx.hash);
 
-    const receipt = await tx.wait();
-    console.log("Transaction Confirmed", receipt);
-    return { status: true, receipt };
-  } catch (err) {
-    console.error("Error joining project:", err);
-    return {
-      status: false,
-      error: err,
-    };
-  }
-}
+//     const receipt = await tx.wait();
+//     console.log("Transaction Confirmed", receipt);
+//     return { status: true, receipt };
+//   } catch (err) {
+//     console.error("Error joining project:", err);
+//     return {
+//       status: false,
+//       error: err,
+//     };
+//   }
+// }
 
 export async function castVoteOnChain(
   projectId: string,
@@ -261,7 +261,10 @@ export async function getUserInfoOnChain(projectAddress: string) {
   }
 }
 
-export async function getVoteInfoOnChain(projectAddress: string, pollId: string) {
+export async function getVoteInfoOnChain(
+  projectAddress: string,
+  pollId: string
+) {
   try {
     const signer = await getSigner();
     const address = await getAddress();
@@ -272,6 +275,26 @@ export async function getVoteInfoOnChain(projectAddress: string, pollId: string)
     return voteInfo;
   } catch (err) {
     console.error("Error fetching passport score:", err);
+    return {
+      status: false,
+      error: err,
+    };
+  }
+}
+
+export async function getTransactionHash(
+  contractName: string,
+  bodyArray: string[],
+  abi: number
+) {
+  try {
+    const iface = new ethers.utils.Interface(abi === 1 ? factoryABI.abi : qvABI.abi);
+
+    const txData = iface.encodeFunctionData(contractName, bodyArray);
+
+    return { status: true, txData };
+  } catch (err) {
+    console.error("Error getting transaction hash:", err);
     return {
       status: false,
       error: err,

@@ -10,10 +10,12 @@ import {
   getAllPollsInfo,
   getPassportScoreOnChain,
   getProjectInfo,
+  getTransactionHash,
   getUserInfoOnChain,
   joinProjectOnChain,
 } from "../../utils/integration";
 import ErrorModal from "../../components/ErrorModal";
+import axios from "axios";
 
 const PollListing = () => {
   const [projectsData, setProjectsData] = useState<ProjectListingPage>();
@@ -94,14 +96,38 @@ const PollListing = () => {
         return;
       }
 
-      const txResult: any = await joinProjectOnChain(projectId!);
+      const txHash = await getTransactionHash("joinProject", [], 2);
 
-      if (txResult?.status) {
-        setModalOpen(true);
-      } else if (txResult?.error?.code === "ACTION_REJECTED") {
-        setError("User rejected the transaction.");
+      if (txHash?.status) {
+        const checkIfWalletIsConnected = async () => {
+          try {
+            const accounts = await window.ethereum.request({
+              method: "eth_accounts",
+            });
+            if (accounts.length > 0) {
+              return accounts[0];
+            }
+          } catch (error) {
+            console.error("Failed to check wallet connection:", error);
+          }
+        };
+
+        const body = {
+          sender: await checkIfWalletIsConnected(),
+          txData: txHash?.txData,
+          contractAddress: projectId,
+        };
+
+        const sendData = axios.post(
+          "https://parry-qv-backend.onrender.com/QV-execute-meta-transaction",
+          body
+        );
+
+        if (sendData.status) {
+          setModalOpen(true);
+        }
       } else {
-        setError(`Transaction failed: ${txResult?.error?.reason}`);
+        setError(`Transaction failed: ${txHash?.error}`);
       }
     } catch (err) {
       setError("Something went wrong.");

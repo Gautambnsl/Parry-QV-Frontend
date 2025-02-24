@@ -4,12 +4,14 @@ import { Vote, X } from "lucide-react";
 import {
   castVoteOnChain,
   getPollInfoOnChain,
+  getTransactionHash,
   getUserInfoOnChain,
   getVoteInfoOnChain,
 } from "../../utils/integration";
 import { BigNumber } from "ethers";
 import { PollListingPage, UserInfoPage } from "../../interface";
 import ErrorModal from "../../components/ErrorModal";
+import axios from "axios";
 
 const ProjectDetail = () => {
   const [pollData, setPollData] = useState<PollListingPage | null>(null);
@@ -48,18 +50,41 @@ const ProjectDetail = () => {
       setLoading(true);
       setModalOpen(false);
       try {
-        const txResult: any = await castVoteOnChain(
-          projectId,
-          Number(pollId),
-          voteAmount
-        );
+        const body = [Number(pollId), voteAmount];
+        const txHash = await getTransactionHash("castVote", body, 2);
 
-        if (txResult?.status) {
-          setVoteAmount(0);
-        } else if (txResult?.error?.code === "ACTION_REJECTED") {
-          setError("User rejected the transaction.");
-        } else {
-          setError(`Transaction failed: ${txResult?.error?.reason}`);
+        if (txHash?.status) {
+          const checkIfWalletIsConnected = async () => {
+            try {
+              const accounts = await window.ethereum.request({
+                method: "eth_accounts",
+              });
+              if (accounts.length > 0) {
+                return accounts[0];
+              }
+            } catch (error) {
+              console.error("Failed to check wallet connection:", error);
+            }
+          };
+
+          const body = {
+            sender: await checkIfWalletIsConnected(),
+            txData: txHash?.txData,
+            contractAddress: projectId,
+          };
+
+          const sendData = axios.post(
+            "https://parry-qv-backend.onrender.com/QV-execute-meta-transaction",
+            body
+          );
+
+          if (sendData.status) {
+            setVoteAmount(0);
+          } else if (sendData?.error?.code === "ACTION_REJECTED") {
+            setError("User rejected the transaction.");
+          } else {
+            setError(`Transaction failed: ${sendData?.error?.reason}`);
+          }
         }
       } catch (err) {
         console.log("Error:", err);
