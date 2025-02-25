@@ -23,11 +23,11 @@ const Home = () => {
       if (Array.isArray(projectData)) {
         setProjectsData(projectData);
       } else {
-        throw new Error("Unexpected data format received.");
+        throw new Error("Unexpected data format received");
       }
     } catch (err) {
       console.error("Error fetching projects:", err);
-      setError("Something went wrong.");
+      setError("Something went wrong");
     } finally {
       setLoading(false);
     }

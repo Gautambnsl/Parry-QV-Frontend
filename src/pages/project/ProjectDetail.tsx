@@ -1,17 +1,23 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Vote, X } from "lucide-react";
 import {
-  castVoteOnChain,
+  getAddress,
+  getIndividualProjectInfo,
   getPollInfoOnChain,
+  getSigner,
   getTransactionHash,
   getUserInfoOnChain,
   getVoteInfoOnChain,
 } from "../../utils/integration";
-import { BigNumber } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import { PollListingPage, UserInfoPage } from "../../interface";
 import ErrorModal from "../../components/ErrorModal";
+import qvABI from "../../utils/qv.json";
 import axios from "axios";
+import Loader from "../../components/Loader";
+import { environment } from "../../utils/environments";
 
 const ProjectDetail = () => {
   const [pollData, setPollData] = useState<PollListingPage | null>(null);
@@ -19,6 +25,8 @@ const ProjectDetail = () => {
   const { pollId, projectId } = useParams();
 
   const [voteInfoData, setVoteInfoData] = useState<any>();
+
+  const [projectInfoData, setProjectInfoData] = useState<any>();
 
   const [voteAmount, setVoteAmount] = useState<number>(
     voteInfoData?.votingPower
@@ -42,55 +50,75 @@ const ProjectDetail = () => {
 
   const handleVoteSubmit = async () => {
     if (voteAmount > 1 && !userInfoData?.isVerified) {
-      setError("You are not verified to vote.");
+      setError("You are not verified to vote more than one vote per poll");
       return;
     }
 
     if (voteAmount > 0 && projectId && pollId) {
       setLoading(true);
       setModalOpen(false);
+
       try {
+        const senderAddress = await getAddress();
+        if (!senderAddress) {
+          setError("Failed to retrieve sender address");
+          setLoading(false);
+          return;
+        }
+
         const body = [Number(pollId), voteAmount];
-        const txHash = await getTransactionHash("castVote", body, 2);
 
-        if (txHash?.status) {
-          const checkIfWalletIsConnected = async () => {
-            try {
-              const accounts = await window.ethereum.request({
-                method: "eth_accounts",
-              });
-              if (accounts.length > 0) {
-                return accounts[0];
-              }
-            } catch (error) {
-              console.error("Failed to check wallet connection:", error);
-            }
-          };
+        const signer = await getSigner();
+        const contract = new ethers.Contract(projectId, qvABI.abi, signer);
 
-          const body = {
-            sender: await checkIfWalletIsConnected(),
-            txData: txHash?.txData,
-            contractAddress: projectId,
-          };
-
-          const sendData = axios.post(
-            "https://parry-qv-backend.onrender.com/QV-execute-meta-transaction",
-            body
+        // Step 1: Static Call to Simulate the Transaction
+        try {
+          const txSimulation = await contract.callStatic.castVote(
+            Number(pollId),
+            voteAmount
           );
+          console.log("Static Call Success:", txSimulation);
+        } catch (staticError: any) {
+          console.error("Static Call Failed:", staticError);
+          setError(
+            `Transaction simulation failed: ${
+              staticError.reason || staticError.message
+            }`
+          );
+          setLoading(false);
+          return;
+        }
 
-          if (sendData.status) {
-            setVoteAmount(0);
-          } else if (sendData?.error?.code === "ACTION_REJECTED") {
-            setError("User rejected the transaction.");
-          } else {
-            setError(`Transaction failed: ${sendData?.error?.reason}`);
-          }
+        // Step 2: Proceed with Actual Transaction Execution
+        const txHash = await getTransactionHash("castVote", body, 2);
+        if (!txHash?.status) {
+          setError(`Transaction failed: ${txHash?.error}`);
+          setLoading(false);
+          return;
+        }
+
+        const requestBody = {
+          sender: senderAddress,
+          txData: txHash?.txData,
+          contractAddress: projectId,
+        };
+
+        const response = await axios.post(
+          environment.QvBackendUrl,
+          requestBody
+        );
+
+        if (response.status === 200) {
+          setVoteAmount(0);
+        } else {
+          setError("Transaction execution failed");
         }
       } catch (err) {
         console.log("Error:", err);
-        setError("An unexpected error occurred while voting.");
+        setError("An unexpected error occurred while voting");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
   };
 
@@ -113,7 +141,7 @@ const ProjectDetail = () => {
 
       setTotalVotes(BigNumber.from(pollData[6]).toNumber());
     } catch {
-      console.error("Error fetching poll data.");
+      console.error("Error fetching poll data");
     }
 
     setLoading(false);
@@ -136,7 +164,7 @@ const ProjectDetail = () => {
       });
     } catch (err) {
       console.error("Error fetching pols:", err);
-      setError("Something went wrong.");
+      setError("Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -155,6 +183,13 @@ const ProjectDetail = () => {
     setVoteAmount(Number(voteInfoData[0].toString()));
   };
 
+  const projectInfoFunction = async () => {
+    if (!projectId) return;
+
+    const projectInfoData = await getIndividualProjectInfo(projectId);
+    setProjectInfoData(projectInfoData);
+  };
+
   useEffect(() => {
     handleGetPoll();
   }, [pollId]);
@@ -162,15 +197,18 @@ const ProjectDetail = () => {
   useEffect(() => {
     userInfoDataFunction();
     voteInfoDataFunction();
+    projectInfoFunction();
   }, []);
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4">
+      <Loader isLoading={loading} />
+
       <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
         <div className="relative h-96">
           {pollData?.ipfsHash && (
             <img
-              src={`https://amaranth-personal-slug-526.mypinata.cloud/ipfs/${pollData.ipfsHash}`}
+              src={`${environment.ipfsUrl}/${pollData.ipfsHash}`}
               alt={pollData?.name}
               className="w-full h-full object-cover"
               loading="lazy"
@@ -185,12 +223,6 @@ const ProjectDetail = () => {
             </h1>
 
             <div className="flex items-center space-x-4">
-              <div className="bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
-                <span className="text-white">
-                  Created by: {pollData?.creator}
-                </span>
-              </div>
-
               <div
                 className={`px-4 py-2 rounded-lg ${
                   pollData?.isActive ? "bg-[#FE0421]" : "bg-gray-500"
@@ -317,11 +349,13 @@ const ProjectDetail = () => {
               <div className="flex items-center space-x-3 text-[#0E101A] mb-2">
                 <Vote className="w-5 h-5 text-[#FE0421]" />
 
-                <h3 className="font-semibold">Token Left</h3>
+                <h3 className="font-semibold">Max Token</h3>
               </div>
 
               <p className="text-2xl font-bold text-[#FE0421]">
-                {userInfoData?.tokensLeft}
+                {userInfoData?.isVerified
+                  ? projectInfoData?.tokensPerVerifiedUser
+                  : projectInfoData?.tokensPerUser}
               </p>
             </div>
 

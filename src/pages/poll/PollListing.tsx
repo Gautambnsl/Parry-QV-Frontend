@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowRight, Users } from "lucide-react";
 import {
@@ -7,15 +8,20 @@ import {
 } from "../../interface";
 import { useEffect, useState } from "react";
 import {
+  getAddress,
   getAllPollsInfo,
   getPassportScoreOnChain,
   getProjectInfo,
+  getSigner,
   getTransactionHash,
   getUserInfoOnChain,
-  joinProjectOnChain,
 } from "../../utils/integration";
 import ErrorModal from "../../components/ErrorModal";
 import axios from "axios";
+import { ethers } from "ethers";
+import qvABI from "../../utils/qv.json";
+import Loader from "../../components/Loader";
+import { environment } from "../../utils/environments";
 
 const PollListing = () => {
   const [projectsData, setProjectsData] = useState<ProjectListingPage>();
@@ -48,7 +54,7 @@ const PollListing = () => {
       }
     } catch (err) {
       console.error("Error fetching polls:", err);
-      setError("Something went wrong.");
+      setError("Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -64,14 +70,14 @@ const PollListing = () => {
       setUserInfoData({
         isRegistered: userInfoData[0],
         isVerified: userInfoData[1],
-        tokensLeft: userInfoData[2].toString(),
-        lastScoreCheck: userInfoData[3].toString(),
-        passportScore: userInfoData[4].toString(),
-        totalVotesCast: userInfoData[5].toString(),
+        tokensLeft: userInfoData[2]?.toString(),
+        lastScoreCheck: userInfoData[3]?.toString(),
+        passportScore: userInfoData[4]?.toString(),
+        totalVotesCast: userInfoData[5]?.toString(),
       });
     } catch (err) {
       console.error("Error fetching polls:", err);
-      setError("Something went wrong.");
+      setError("Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -90,47 +96,70 @@ const PollListing = () => {
   };
 
   const handleJoinProject = async () => {
+    setError(null);
+    setLoading(true);
+
     try {
+      // Check if user has a passport score
       if (!passportScore) {
-        setError("You are not registered on the gitcoin passport.");
+        setError("You are not registered on the Gitcoin Passport");
+        setLoading(false);
         return;
       }
 
-      const txHash = await getTransactionHash("joinProject", [], 2);
+      if (!projectId) return;
 
-      if (txHash?.status) {
-        const checkIfWalletIsConnected = async () => {
-          try {
-            const accounts = await window.ethereum.request({
-              method: "eth_accounts",
-            });
-            if (accounts.length > 0) {
-              return accounts[0];
-            }
-          } catch (error) {
-            console.error("Failed to check wallet connection:", error);
-          }
-        };
+      const senderAddress = await getAddress();
+      if (!senderAddress) {
+        setError("Failed to retrieve sender address");
+        setLoading(false);
+        return;
+      }
 
-        const body = {
-          sender: await checkIfWalletIsConnected(),
-          txData: txHash?.txData,
-          contractAddress: projectId,
-        };
+      const signer = await getSigner();
+      const contract = new ethers.Contract(projectId, qvABI.abi, signer);
 
-        const sendData = axios.post(
-          "https://parry-qv-backend.onrender.com/QV-execute-meta-transaction",
-          body
+      // Step 1: Static Call to Simulate the Transaction
+      try {
+        const txSimulation = await contract.callStatic.joinProject();
+        console.log("Static Call Success:", txSimulation);
+      } catch (staticError: any) {
+        console.error("Static Call Failed:", staticError);
+        setError(
+          `Transaction simulation failed: ${
+            staticError.reason || staticError.message
+          }`
         );
+        setLoading(false);
+        return;
+      }
 
-        if (sendData.status) {
-          setModalOpen(true);
-        }
-      } else {
+      // Step 2: Proceed with Actual Transaction Execution
+      const txHash = await getTransactionHash("joinProject", [], 2);
+      if (!txHash?.status) {
         setError(`Transaction failed: ${txHash?.error}`);
+        setLoading(false);
+        return;
+      }
+
+      const requestBody = {
+        sender: senderAddress,
+        txData: txHash?.txData,
+        contractAddress: projectId,
+      };
+
+      const response = await axios.post(environment.QvBackendUrl, requestBody);
+
+      if (response.status === 200) {
+        setModalOpen(true);
+      } else {
+        setError("Transaction execution failed");
       }
     } catch (err) {
-      setError("Something went wrong.");
+      console.error("Unexpected Error:", err);
+      setError("Something went wrong. Please try again");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -149,7 +178,7 @@ const PollListing = () => {
       }
     } catch (err) {
       console.error("Error fetching project data:", err);
-      setError("Something went wrong.");
+      setError("Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -164,16 +193,23 @@ const PollListing = () => {
 
   return (
     <div className="max-w-7xl mx-auto py-12 px-4">
+      <Loader isLoading={loading} />
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-4xl font-bold text-[#0E101A] mb-4">Polls</h1>
+
           <p className="text-gray-600 mb-6">
-            Browse all available voting polls. Minimum score to join project{" "}
-            {(Number(projectsData?.minScoreToJoin) / 10000).toFixed(2)} and
-            minimum score to be considered verified{" "}
-            {(Number(projectsData?.minScoreToVerify) / 10000).toFixed(2)}
+            Explore all available voting polls. A minimum score of{" "}
+            {(Number(projectsData?.minScoreToJoin) / 10000).toFixed(2)} is
+            required to join a project, while a score of{" "}
+            {(Number(projectsData?.minScoreToVerify) / 10000).toFixed(2)} is
+            needed for verification. Verified users receive{" "}
+            {projectsData?.tokensPerVerifiedUser} votes, whereas regular users
+            get {projectsData?.tokensPerUser} votes.
           </p>
         </div>
+
         <div className="flex">
           {!userInfoData?.isRegistered ? (
             <button
@@ -191,6 +227,7 @@ const PollListing = () => {
               <span>Token Balance: {userInfoData?.tokensLeft}</span>
             </button>
           )}
+
           <Link
             to={`/projects/${projectId}/create-poll`}
             className="inline-block bg-[#FE0421] text-white px-5 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300 ml-2"
@@ -226,12 +263,14 @@ const PollListing = () => {
             >
               <div className="relative h-48">
                 <img
-                  src={`https://amaranth-personal-slug-526.mypinata.cloud/ipfs/${poll.ipfsHash}`}
+                  src={`${environment.ipfsUrl}/${poll.ipfsHash}`}
                   alt={poll.name}
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   loading="lazy"
                 />
+
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+
                 <div className="absolute bottom-4 left-4 right-4">
                   <h2 className="text-xl font-bold text-white">{poll.name}</h2>
                 </div>
@@ -247,6 +286,7 @@ const PollListing = () => {
                     <Users className="w-4 h-4 mr-2" />
                     <span>Total Participants:</span>
                   </div>
+
                   <span className="font-medium text-[#FE0421]">
                     {poll.totalParticipants.toString()}
                   </span>
@@ -265,7 +305,9 @@ const PollListing = () => {
         !loading &&
         !error && (
           <div className="text-center text-gray-500 text-xl">
-            No polls available.
+            {!userInfoData?.isRegistered
+              ? "Please join project to see the polls"
+              : "No polls available"}
           </div>
         )
       )}
@@ -279,10 +321,7 @@ const PollListing = () => {
 
             <div className="flex space-x-4">
               <button
-                onClick={() => {
-                  setModalOpen(false);
-                  window.location.reload();
-                }}
+                onClick={() => setModalOpen(false)}
                 className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
               >
                 Close

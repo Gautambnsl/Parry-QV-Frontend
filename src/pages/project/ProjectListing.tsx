@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ProjectListingPage } from "../../interface";
 import { getProjectInfo } from "../../utils/integration";
 import ErrorModal from "../../components/ErrorModal";
+import Loader from "../../components/Loader";
 
 const ProjectListing = () => {
   const [projectsData, setProjectsData] = useState<ProjectListingPage[]>([]);
@@ -25,7 +26,7 @@ const ProjectListing = () => {
       }
     } catch (err) {
       console.error("Error fetching project data:", err);
-      setError("Something went wrong.");
+      setError("Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -37,6 +38,8 @@ const ProjectListing = () => {
 
   return (
     <div className="max-w-7xl mx-auto py-12 px-4">
+      <Loader isLoading={loading} />
+
       <h1 className="text-4xl font-bold text-[#0E101A] mb-4">Projects</h1>
 
       <p className="text-gray-600 mb-6">

@@ -5,9 +5,17 @@ import { ImagePlus, Info } from "lucide-react";
 import { useState } from "react";
 import * as Yup from "yup";
 import { CreatePollValues } from "../../interface";
-import { createPollOnChain, getTransactionHash } from "../../utils/integration";
+import {
+  getAddress,
+  getSigner,
+  getTransactionHash,
+} from "../../utils/integration";
 import ErrorModal from "../../components/ErrorModal";
 import { useParams } from "react-router-dom";
+import { ethers } from "ethers";
+import qvABI from "../../utils/qv.json";
+import Loader from "../../components/Loader";
+import { environment } from "../../utils/environments";
 
 const CreatePoll = () => {
   const [dragActive, setDragActive] = useState<boolean>(false);
@@ -23,7 +31,6 @@ const CreatePoll = () => {
   const { projectId } = useParams();
 
   const handleUploadImageToIPFS = async (image: File) => {
-    setLoading(true);
     setError(null);
 
     try {
@@ -37,14 +44,11 @@ const CreatePoll = () => {
         })
       );
 
-      const url = "https://api.pinata.cloud/pinning/pinFileToIPFS";
-
-      const response = await axios.post(url, formData, {
+      const response = await axios.post(environment.pinataUrl, formData, {
         maxBodyLength: Infinity,
         headers: {
-          pinata_api_key: "a507741735fbd024ad7d",
-          pinata_secret_api_key:
-            "be8b3f3e9c96e0290e46e1175e3acb8ff449166f4be464166b5e06fc94ebfed9",
+          pinata_api_key: environment.pinataApiKey,
+          pinata_secret_api_key: environment.pinataSecretApiKey,
           "Content-Type": "multipart/form-data",
         },
       });
@@ -56,10 +60,8 @@ const CreatePoll = () => {
       }
     } catch (error) {
       console.error("Error uploading to Pinata:", error);
-      setError("Something went wrong.");
+      setError("Something went wrong");
       return null;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -77,7 +79,7 @@ const CreatePoll = () => {
         .required("Image is required")
         .test(
           "fileFormat",
-          "Unsupported Format. Only PNG, JPG, or WEBP allowed.",
+          "Unsupported Format. Only PNG, JPG, or WEBP allowed",
           (value) =>
             value &&
             ["image/png", "image/jpg", "image/jpeg", "image/webp"].includes(
@@ -94,46 +96,73 @@ const CreatePoll = () => {
         const ipfsHash = await handleUploadImageToIPFS(values.image!);
         if (!ipfsHash) {
           setError("IPFS upload failed");
+          setLoading(false);
           return;
         }
 
         const body = [values.name, values.description, ipfsHash];
 
-        const txHash: any = await getTransactionHash("createPoll", body, 2);
+        if (!projectId) return;
 
-        if (txHash?.status) {
-          const checkIfWalletIsConnected = async () => {
-            try {
-              const accounts = await window.ethereum.request({
-                method: "eth_accounts",
-              });
-              if (accounts.length > 0) {
-                return accounts[0];
-              }
-            } catch (error) {
-              console.error("Failed to check wallet connection:", error);
-            }
-          };
-
-          const body = {
-            sender: await checkIfWalletIsConnected(),
-            txData: txHash?.txData,
-            contractAddress: projectId,
-          };
-
-          const sendData = axios.post(
-            "https://parry-qv-backend.onrender.com/QV-execute-meta-transaction",
-            body
-          );
-
-          if (sendData.status) {
-            setModalOpen(true);
-          }
-        } else {
-          setError(`Transaction failed: ${txHash?.error}`);
+        // Get sender address
+        const senderAddress = await getAddress();
+        if (!senderAddress) {
+          setError("Failed to retrieve sender address");
+          setLoading(false);
+          return;
         }
-      } catch {
-        setError("Something went wrong. Please try again.");
+
+        const signer = await getSigner();
+        const contract = new ethers.Contract(projectId, qvABI.abi, signer);
+
+        // Step 1: Static Call to Simulate the Transaction
+        try {
+          const txSimulation = await contract.callStatic.createPoll(
+            values.name,
+            values.description,
+            ipfsHash
+          );
+          console.log("Static Call Success:", txSimulation);
+        } catch (staticError: any) {
+          console.error("Static Call Failed:", staticError);
+          setError(
+            `Transaction simulation failed: ${
+              staticError.reason || staticError.message
+            }`
+          );
+          setLoading(false);
+          return;
+        }
+
+        // Step 2: Proceed with Actual Transaction Execution
+        const txHash = await getTransactionHash("createPoll", body, 2);
+        if (!txHash?.status) {
+          setError(`Transaction failed: ${txHash?.error}`);
+          setLoading(false);
+          return;
+        }
+
+        // Prepare request body
+        const requestBody = {
+          sender: senderAddress,
+          txData: txHash?.txData,
+          contractAddress: projectId,
+        };
+
+        // Execute meta transaction
+        const response = await axios.post(
+          environment.QvBackendUrl,
+          requestBody
+        );
+
+        if (response.status === 200) {
+          setModalOpen(true);
+        } else {
+          setError("Transaction execution failed");
+        }
+      } catch (error) {
+        console.error("Unexpected Error:", error);
+        setError("Something went wrong. Please try again");
       } finally {
         setLoading(false);
       }
@@ -178,6 +207,8 @@ const CreatePoll = () => {
 
   return (
     <div className="max-w-3xl mx-auto py-12 px-4">
+      <Loader isLoading={loading} />
+
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-[#0E101A] mb-4">
           Create a New Poll
@@ -200,7 +231,7 @@ const CreatePoll = () => {
             >
               Poll Title
             </label>
-            <span title="Give your poll a unique and descriptive name.">
+            <span title="Give your poll a unique and descriptive name">
               <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
             </span>
           </div>
@@ -231,7 +262,7 @@ const CreatePoll = () => {
             >
               Description
             </label>
-            <span title="Briefly describe what your poll is about and its objectives.">
+            <span title="Briefly describe what your poll is about and its objectives">
               <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
             </span>
           </div>
@@ -275,7 +306,7 @@ const CreatePoll = () => {
                 />
               ) : (
                 <>
-                  <span title="Upload an image for your poll. PNG, JPG, or WEBP only.">
+                  <span title="Upload an image for your poll. PNG, JPG, or WEBP only">
                     <ImagePlus className="w-12 h-12 text-[#FE0421] mb-4" />
                   </span>
                   <p className="mb-2 text-sm text-gray-500">

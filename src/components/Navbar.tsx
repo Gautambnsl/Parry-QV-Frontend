@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Vote, Rocket, Home, Wallet, X, Menu } from "lucide-react";
@@ -37,11 +38,11 @@ const Navbar = () => {
       } catch (error: any) {
         console.error("Wallet connection failed:", error);
         if (error.code === 4001) {
-          alert("Connection request rejected by the user.");
+          alert("Connection request rejected by the user");
         }
       }
     } else {
-      alert("MetaMask is not installed. Please install MetaMask to continue.");
+      alert("MetaMask is not installed. Please install MetaMask to continue");
     }
   };
 

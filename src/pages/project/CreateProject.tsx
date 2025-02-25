@@ -5,8 +5,16 @@ import * as Yup from "yup";
 import { useState } from "react";
 import axios from "axios";
 import { CreateProjectValues } from "../../interface";
-import { getTransactionHash } from "../../utils/integration";
+import {
+  getAddress,
+  getSigner,
+  getTransactionHash,
+} from "../../utils/integration";
 import ErrorModal from "../../components/ErrorModal";
+import Loader from "../../components/Loader";
+import { ethers } from "ethers";
+import factoryABI from "../../utils/factory.json";
+import { environment } from "../../utils/environments";
 
 const CreateProject: React.FC = () => {
   const [dragActive, setDragActive] = useState<boolean>(false);
@@ -20,7 +28,6 @@ const CreateProject: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleUploadImageToIPFS = async (image: File) => {
-    setLoading(true);
     setError(null);
 
     const formData = new FormData();
@@ -36,14 +43,11 @@ const CreateProject: React.FC = () => {
     formData.append("pinataMetadata", metadata);
 
     try {
-      const url = "https://api.pinata.cloud/pinning/pinFileToIPFS";
-
-      const response = await axios.post(url, formData, {
+      const response = await axios.post(environment.pinataUrl, formData, {
         maxBodyLength: Infinity,
         headers: {
-          pinata_api_key: "a507741735fbd024ad7d",
-          pinata_secret_api_key:
-            "be8b3f3e9c96e0290e46e1175e3acb8ff449166f4be464166b5e06fc94ebfed9",
+          pinata_api_key: environment.pinataApiKey,
+          pinata_secret_api_key: environment.pinataSecretApiKey,
           "Content-Type": "multipart/form-data",
         },
       });
@@ -55,10 +59,8 @@ const CreateProject: React.FC = () => {
       }
     } catch (error) {
       console.error("Error uploading to Pinata:", error);
-      setError("Failed to upload image. Please try again.");
+      setError("Failed to upload image. Please try again");
       return null;
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -90,7 +92,7 @@ const CreateProject: React.FC = () => {
         .required("Image is required")
         .test(
           "fileFormat",
-          "Unsupported Format. Only PNG, JPG, or WEBP allowed.",
+          "Unsupported Format. Only PNG, JPG, or WEBP allowed",
           (value) =>
             value &&
             ["image/png", "image/jpg", "image/jpeg", "image/webp"].includes(
@@ -107,6 +109,7 @@ const CreateProject: React.FC = () => {
         const ipfsHash = await handleUploadImageToIPFS(values.image!);
         if (!ipfsHash) {
           setError("IPFS upload failed");
+          setLoading(false);
           return;
         }
 
@@ -121,40 +124,71 @@ const CreateProject: React.FC = () => {
           new Date().getTime() + values.endDate * 24 * 60 * 60 * 1000,
         ];
 
-        const txHash = await getTransactionHash("createProject", body, 1);
-
-        if (txHash?.status) {
-          const checkIfWalletIsConnected = async () => {
-            try {
-              const accounts = await window.ethereum.request({
-                method: "eth_accounts",
-              });
-              if (accounts.length > 0) {
-                return accounts[0];
-              }
-            } catch (error) {
-              console.error("Failed to check wallet connection:", error);
-            }
-          };
-
-          const body = {
-            sender: await checkIfWalletIsConnected(),
-            txData: txHash?.txData,
-          };
-
-          const sendData = axios.post(
-            "https://parry-qv-backend.onrender.com/factory-execute-meta-transaction",
-            body
-          );
-
-          if (sendData.status) {
-            setModalOpen(true);
-          }
-        } else {
-          setError(`Transaction failed: ${txHash?.error}`);
+        const senderAddress = await getAddress();
+        if (!senderAddress) {
+          setError("Failed to retrieve sender address");
+          setLoading(false);
+          return;
         }
-      } catch {
-        setError("Something went wrong. Please try again.");
+
+        const FACTORY_ADDRESS = environment.factorAddress;
+        const signer = await getSigner();
+        const contract = new ethers.Contract(
+          FACTORY_ADDRESS,
+          factoryABI.abi,
+          signer
+        );
+
+        // Step 1: Static Call to Simulate the Transaction
+        try {
+          const txSimulation = await contract.callStatic.createProject(
+            values.name,
+            values.description,
+            ipfsHash,
+            values.tokensPerUser,
+            values.tokensPerVerifiedUser,
+            values.minScoreToJoin * 10000,
+            values.minScoreToVerify * 10000,
+            new Date().getTime() + values.endDate * 24 * 60 * 60 * 1000
+          );
+          console.log("Static Call Success:", txSimulation);
+        } catch (staticError: any) {
+          console.error("Static Call Failed:", staticError);
+          setError(
+            `Transaction simulation failed: ${
+              staticError.reason || staticError.message
+            }`
+          );
+          setLoading(false);
+          return;
+        }
+
+        // Step 2: Proceed with Actual Transaction Execution
+        const txHash = await getTransactionHash("createProject", body, 1);
+        if (!txHash?.status) {
+          setError(`Transaction failed: ${txHash?.error}`);
+          setLoading(false);
+          return;
+        }
+
+        const requestBody = {
+          sender: senderAddress,
+          txData: txHash?.txData,
+        };
+
+        const response = await axios.post(
+          environment.factoryBackendUrl,
+          requestBody
+        );
+
+        if (response.status === 200) {
+          setModalOpen(true);
+        } else {
+          setError("Transaction execution failed");
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        setError("Something went wrong. Please try again");
       } finally {
         setLoading(false);
       }
@@ -199,6 +233,7 @@ const CreateProject: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto py-12 px-4">
+      <Loader isLoading={loading} />
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-[#0E101A] mb-4">
           Create a New Project
@@ -221,7 +256,7 @@ const CreateProject: React.FC = () => {
             >
               Project Name
             </label>
-            <span title="Give your project a unique and descriptive name.">
+            <span title="Give your project a unique and descriptive name">
               <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
             </span>
           </div>
@@ -251,7 +286,7 @@ const CreateProject: React.FC = () => {
             >
               Description
             </label>
-            <span title="Briefly describe what your project is about and its objectives.">
+            <span title="Briefly describe what your project is about and its objectives">
               <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
             </span>
           </div>
@@ -285,7 +320,7 @@ const CreateProject: React.FC = () => {
               >
                 Tokens per normal user
               </label>
-              <span title="Specify the number of tokens each user will receive for participation.">
+              <span title="Specify the number of tokens each user will receive for participation">
                 <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
               </span>
             </div>
@@ -319,7 +354,7 @@ const CreateProject: React.FC = () => {
               >
                 Tokens per verified user
               </label>
-              <span title="Enter the tokens for verified users, who may receive a different amount than regular users.">
+              <span title="Enter the tokens for verified users, who may receive a different amount than regular users">
                 <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
               </span>
             </div>
@@ -415,7 +450,7 @@ const CreateProject: React.FC = () => {
             >
               Number of Days
             </label>
-            <span title="Set the duration for how long this project will be active.">
+            <span title="Set the duration for how long this project will be active">
               <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
             </span>
           </div>

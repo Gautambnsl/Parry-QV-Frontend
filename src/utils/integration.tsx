@@ -1,16 +1,10 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import detectEthereumProvider from "@metamask/detect-provider";
 import { ethers } from "ethers";
 import factoryABI from "../utils/factory.json";
 import qvABI from "../utils/qv.json";
-import {
-  CreatePollValues,
-  CreateProjectValues,
-  ProjectListingPage,
-} from "../interface";
-
-const FACTORY_ADDRESS = "0x64a107b6720a23F501408090879d4455eB23A9e4";
-const RPC_URL =
-  "https://opt-sepolia.g.alchemy.com/v2/swE9yoWrnP9EzbOKdPsJD2Hk0yb3-kDr";
+import { ProjectListingPage } from "../interface";
+import { environment } from "./environments";
 
 export async function getNetwork() {
   return Number(await window.ethereum.request({ method: "eth_chainId" }));
@@ -25,20 +19,42 @@ export async function getSigner() {
 }
 
 export async function getProvider() {
-  return new ethers.providers.JsonRpcProvider(RPC_URL);
+  return new ethers.providers.JsonRpcProvider(environment.rpcUrl);
 }
 
 export async function getAddress() {
-  const provider = await detectEthereumProvider();
+  const provider: any = await detectEthereumProvider();
+
   if (!provider) return null;
-  return provider?.selectedAddress || null;
+
+  try {
+    const accounts = await provider.request({
+      method: "eth_requestAccounts",
+    });
+
+    if (accounts.length > 0) {
+      // Listen for account changes and refresh the page
+      provider.on("accountsChanged", (newAccounts: string[]) => {
+        if (newAccounts.length > 0) {
+          window.location.reload(); // Refresh the page when account changes
+        }
+      });
+
+      return accounts[0];
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Error connecting to MetaMask:", error);
+    return null;
+  }
 }
 
 export async function getFactoryProjects() {
   try {
     const provider = await getProvider();
     const contract = new ethers.Contract(
-      FACTORY_ADDRESS,
+      environment.factorAddress,
       factoryABI.abi,
       provider
     );
@@ -71,7 +87,7 @@ export async function getProjectInfo() {
           id: projectAddress,
           name: projectInfo.name,
           description: projectInfo.description,
-          ipfsHash: `https://amaranth-personal-slug-526.mypinata.cloud/ipfs/${projectInfo.ipfsHash}`,
+          ipfsHash: `${environment.ipfsUrl}/${projectInfo.ipfsHash}`,
           tokensPerUser: projectInfo.tokensPerUser.toNumber(),
           tokensPerVerifiedUser: projectInfo.tokensPerVerifiedUser.toNumber(),
           minScoreToJoin: projectInfo.minScoreToJoin.toNumber(),
@@ -82,6 +98,44 @@ export async function getProjectInfo() {
     );
 
     return projectData;
+  } catch (err) {
+    return { status: false, err };
+  }
+}
+
+export async function getIndividualProjectInfo(projectId: string) {
+  try {
+    const projects = await getFactoryProjects();
+    const provider = await getProvider();
+
+    const projectData: ProjectListingPage[] = await Promise.all(
+      projects.map(async (projectAddress: string) => {
+        if (projectAddress.toLowerCase() !== projectId.toLowerCase())
+          return null;
+
+        const contract = new ethers.Contract(
+          projectAddress,
+          qvABI.abi,
+          provider
+        );
+        const projectInfo = await contract.getProjectInfo();
+
+        return {
+          id: projectAddress,
+          name: projectInfo.name,
+          description: projectInfo.description,
+          ipfsHash: `${environment.ipfsUrl}/${projectInfo.ipfsHash}`,
+          tokensPerUser: projectInfo.tokensPerUser.toNumber(),
+          tokensPerVerifiedUser: projectInfo.tokensPerVerifiedUser.toNumber(),
+          minScoreToJoin: projectInfo.minScoreToJoin.toNumber(),
+          minScoreToVerify: projectInfo.minScoreToVerify.toNumber(),
+          endTime: projectInfo.endTime.toString(),
+        };
+      })
+    );
+    const filteredData = projectData.filter((p) => p !== null);
+
+    return filteredData.length > 0 ? filteredData[0] : null;
   } catch (err) {
     return { status: false, err };
   }
@@ -178,30 +232,30 @@ export async function getAllPollsInfo(projectId: string) {
 //   }
 // }
 
-export async function castVoteOnChain(
-  projectId: string,
-  pollId: number,
-  votingPower: number
-) {
-  try {
-    const signer = await getSigner();
-    const contract = new ethers.Contract(projectId, qvABI.abi, signer);
+// export async function castVoteOnChain(
+//   projectId: string,
+//   pollId: number,
+//   votingPower: number
+// ) {
+//   try {
+//     const signer = await getSigner();
+//     const contract = new ethers.Contract(projectId, qvABI.abi, signer);
 
-    const tx = await contract.castVote(pollId, votingPower);
-    console.log("Transaction Sent:", tx.hash);
+//     const tx = await contract.castVote(pollId, votingPower);
+//     console.log("Transaction Sent:", tx.hash);
 
-    const receipt = await tx.wait();
-    console.log("Transaction Confirmed:", receipt);
+//     const receipt = await tx.wait();
+//     console.log("Transaction Confirmed:", receipt);
 
-    return { status: true, receipt };
-  } catch (err) {
-    console.error("Error casting vote:", err);
-    return {
-      status: false,
-      error: err,
-    };
-  }
-}
+//     return { status: true, receipt };
+//   } catch (err) {
+//     console.error("Error casting vote:", err);
+//     return {
+//       status: false,
+//       error: err,
+//     };
+//   }
+// }
 
 export async function getPollInfoOnChain(projectId: string, pollId: string) {
   try {
@@ -209,7 +263,6 @@ export async function getPollInfoOnChain(projectId: string, pollId: string) {
     const contract = new ethers.Contract(projectId, qvABI.abi, signer);
 
     const pollData = await contract.getPollInfo(pollId);
-    console.log("Fetched Poll Info:", pollData);
 
     return pollData;
   } catch (err) {
@@ -226,7 +279,7 @@ export async function getPassportScoreOnChain() {
     const signer = await getSigner();
     const address = await getAddress();
     const contract = new ethers.Contract(
-      "0xcb2144d0aFf079B959565fc9b11d4f54512f00f0",
+      environment.passportAddress,
       qvABI.abi,
       signer
     );
@@ -284,11 +337,13 @@ export async function getVoteInfoOnChain(
 
 export async function getTransactionHash(
   contractName: string,
-  bodyArray: string[],
+  bodyArray: any[],
   abi: number
 ) {
   try {
-    const iface = new ethers.utils.Interface(abi === 1 ? factoryABI.abi : qvABI.abi);
+    const iface = new ethers.utils.Interface(
+      abi === 1 ? factoryABI.abi : qvABI.abi
+    );
 
     const txData = iface.encodeFunctionData(contractName, bodyArray);
 
