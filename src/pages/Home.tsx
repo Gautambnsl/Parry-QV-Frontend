@@ -72,7 +72,7 @@ const Home = () => {
                   Vote
                 </span>
                 <span className="block transform hover:translate-x-4 transition-transform duration-300">
-                  Explore
+                  Explore!
                 </span>
               </h1>
 
