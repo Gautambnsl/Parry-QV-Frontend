@@ -40,7 +40,7 @@ const ProjectDetail = () => {
 
   const [modalOpen, setModalOpen] = useState<boolean>(false);
 
-  const [successModalOpen, setSuccessModalOpen] = useState<boolean>(true);
+  const [successModalOpen, setSuccessModalOpen] = useState<boolean>(false);
 
   const [txHash, setTxHash] = useState<string>("");
 
@@ -123,8 +123,8 @@ const ProjectDetail = () => {
 
       if (response.status === 200) {
         setTxHash(response.data.hash);
-        setVoteAmount(0);
         setSuccessModalOpen(true);
+        setVoteAmount(0);
       } else {
         setError("Transaction execution failed");
       }
@@ -133,7 +133,6 @@ const ProjectDetail = () => {
       setError("An unexpected error occurred while voting");
     } finally {
       setModalOpen(false);
-      setSuccessModalOpen(false);
       setLoading(false);
     }
   };
@@ -219,8 +218,6 @@ const ProjectDetail = () => {
     voteInfoDataFunction();
     projectInfoFunction();
   }, []);
-
-  console.log("voteAmount", voteAmount);
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4">
@@ -368,7 +365,7 @@ const ProjectDetail = () => {
                       }}
                       className="flex-1 py-3 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition border"
                     >
-                      Close
+                      Close and Reload
                     </button>
 
                     {/* Redirect Button */}
