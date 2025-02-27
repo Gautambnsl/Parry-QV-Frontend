@@ -27,6 +27,8 @@ const CreateProject: React.FC = () => {
 
   const [error, setError] = useState<string | null>(null);
 
+  const [txHash, setTxHash] = useState<string>("");
+
   const handleUploadImageToIPFS = async (image: File) => {
     setError(null);
 
@@ -182,6 +184,7 @@ const CreateProject: React.FC = () => {
         );
 
         if (response.status === 200) {
+          setTxHash(response.data.hash);
           setModalOpen(true);
         } else {
           setError("Transaction execution failed");
@@ -256,9 +259,15 @@ const CreateProject: React.FC = () => {
             >
               Project Name
             </label>
-            <span title="Give your project a unique and descriptive name">
+            <div className="relative group">
               <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
-            </span>
+              <div
+                className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
+                style={{ width: "max-content" }}
+              >
+                Give your project a unique and descriptive name
+              </div>
+            </div>
           </div>
 
           <input
@@ -286,9 +295,15 @@ const CreateProject: React.FC = () => {
             >
               Description
             </label>
-            <span title="Briefly describe what your project is about and its objectives">
+            <div className="relative group">
               <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
-            </span>
+              <div
+                className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
+                style={{ width: "max-content" }}
+              >
+                Briefly describe what your project is about and its objectives
+              </div>
+            </div>
           </div>
 
           <textarea
@@ -320,9 +335,16 @@ const CreateProject: React.FC = () => {
               >
                 Tokens per normal user
               </label>
-              <span title="Specify the number of tokens each user will receive for participation">
+              <div className="relative group">
                 <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
-              </span>
+                <div
+                  className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
+                  style={{ width: "max-content" }}
+                >
+                  Specify the number of tokens each user will receive for
+                  participation
+                </div>
+              </div>
             </div>
 
             <input
@@ -354,9 +376,16 @@ const CreateProject: React.FC = () => {
               >
                 Tokens per verified user
               </label>
-              <span title="Enter the tokens for verified users, who may receive a different amount than regular users">
+              <div className="relative group">
                 <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
-              </span>
+                <div
+                  className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
+                  style={{ width: "max-content" }}
+                >
+                  Enter the tokens for verified users, who may receive a
+                  different amount than regular users
+                </div>
+              </div>
             </div>
 
             <input
@@ -390,9 +419,15 @@ const CreateProject: React.FC = () => {
               >
                 Minimum Score to Join
               </label>
-              <span title="Users must have at least this score to join the project">
+              <div className="relative group">
                 <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
-              </span>
+                <div
+                  className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
+                  style={{ width: "max-content" }}
+                >
+                  Users must have at least this score to join the project
+                </div>
+              </div>
             </div>
 
             <input
@@ -419,9 +454,15 @@ const CreateProject: React.FC = () => {
               >
                 Minimum Score to Verify
               </label>
-              <span title="Users must meet this score threshold to be considered verified">
+              <div className="relative group">
                 <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
-              </span>
+                <div
+                  className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
+                  style={{ width: "max-content" }}
+                >
+                  Users must meet this score threshold to be considered verified
+                </div>
+              </div>
             </div>
 
             <input
@@ -450,9 +491,15 @@ const CreateProject: React.FC = () => {
             >
               Number of Days
             </label>
-            <span title="Set the duration for how long this project will be active">
+            <div className="relative group">
               <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
-            </span>
+              <div
+                className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
+                style={{ width: "max-content" }}
+              >
+                Set the duration for how long this project will be active
+              </div>
+            </div>
           </div>
 
           <input
@@ -527,20 +574,38 @@ const CreateProject: React.FC = () => {
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-xl w-96">
-            <p className="text-gray-600 mb-4">Project created successfully!</p>
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-[30%]">
+            <div className="flex flex-col items-center text-center">
+              <p className="text-gray-700 text-lg font-medium">
+                Project created successfully!
+              </p>
 
-            <div className="flex space-x-4">
-              <button
-                onClick={() => {
-                  setModalOpen(false);
-                  resetForm();
-                  setImagePreview(null);
-                }}
-                className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
-              >
-                Close
-              </button>
+              <div className="flex space-x-4 mt-6 w-full">
+                {/* Close Button */}
+                <button
+                  onClick={() => {
+                    setModalOpen(false);
+                    resetForm();
+                    setImagePreview(null);
+                  }}
+                  className="flex-1 py-3 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition border"
+                >
+                  Close
+                </button>
+
+                {/* Redirect Button */}
+                <button
+                  onClick={() =>
+                    window.open(
+                      `${environment.transactionUrl}/${txHash}`,
+                      "_blank"
+                    )
+                  }
+                  className="flex-1 py-3 rounded-lg bg-[#FE0421] text-white font-medium hover:bg-[#D9021A] transition"
+                >
+                  View in Explorer
+                </button>
+              </div>
             </div>
           </div>
         </div>

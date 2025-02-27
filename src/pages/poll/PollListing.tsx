@@ -38,6 +38,8 @@ const PollListing = () => {
 
   const [modalOpen, setModalOpen] = useState<boolean>(false);
 
+  const [txHash, setTxHash] = useState<string>("");
+
   const { projectId } = useParams();
   const navigate = useNavigate();
 
@@ -151,6 +153,7 @@ const PollListing = () => {
       const response = await axios.post(environment.QvBackendUrl, requestBody);
 
       if (response.status === 200) {
+        setTxHash(response.data.hash);
         setModalOpen(true);
       } else {
         setError("Transaction execution failed");
@@ -199,15 +202,21 @@ const PollListing = () => {
         <div>
           <h1 className="text-4xl font-bold text-[#0E101A] mb-4">Polls</h1>
 
-          <p className="text-gray-600 mb-6">
-            Explore all available voting polls. A minimum score of{" "}
-            {(Number(projectsData?.minScoreToJoin) / 10000).toFixed(2)} is
-            required to join a project, while a score of{" "}
-            {(Number(projectsData?.minScoreToVerify) / 10000).toFixed(2)} is
-            needed for verification. Verified users receive{" "}
-            {projectsData?.tokensPerVerifiedUser} votes, whereas regular users
-            get {projectsData?.tokensPerUser} votes.
-          </p>
+          {projectsData ? (
+            <p className="text-gray-600 mb-6">
+              Explore all available voting polls. A minimum score of{" "}
+              {(projectsData.minScoreToJoin / 10000).toFixed(2)} is required to
+              join a project, while a score of{" "}
+              {(projectsData.minScoreToVerify / 10000).toFixed(2)} is needed for
+              verification. Verified users receive{" "}
+              {projectsData.tokensPerVerifiedUser} votes, whereas regular users
+              get {projectsData.tokensPerUser} votes.
+            </p>
+          ) : (
+            <p className="text-gray-400 italic">
+              Loading voting poll details...
+            </p>
+          )}
         </div>
 
         <div className="flex">
@@ -314,18 +323,37 @@ const PollListing = () => {
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-xl w-96">
-            <p className="text-gray-600 mb-4">
-              You have successfully joined the project.
-            </p>
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-[30%]">
+            <div className="flex flex-col items-center text-center">
+              <p className="text-gray-700 text-lg font-medium">
+                You have successfully joined the project!
+              </p>
 
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setModalOpen(false)}
-                className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
-              >
-                Close
-              </button>
+              <div className="flex space-x-4 mt-6 w-full">
+                {/* Close and Reload Button */}
+                <button
+                  onClick={() => {
+                    setModalOpen(false);
+                    window.location.reload();
+                  }}
+                  className="flex-1 py-3 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition border"
+                >
+                  Close and Reload
+                </button>
+
+                {/* Redirect Button */}
+                <button
+                  onClick={() =>
+                    window.open(
+                      `${environment.transactionUrl}/${txHash}`,
+                      "_blank"
+                    )
+                  }
+                  className="flex-1 py-3 rounded-lg bg-[#FE0421] text-white font-medium hover:bg-[#D9021A] transition"
+                >
+                  View in Explorer
+                </button>
+              </div>
             </div>
           </div>
         </div>

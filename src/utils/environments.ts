@@ -7,5 +7,6 @@ export const environment = {
   pinataUrl: import.meta.env.VITE_PINATA_URL,
   pinataApiKey: import.meta.env.VITE_PINATA_API_KEY,
   pinataSecretApiKey: import.meta.env.VITE_PINATA_SECRET_API_KEY,
-  ipfsUrl: import.meta.env.VITE_IPFS_URL
+  ipfsUrl: import.meta.env.VITE_IPFS_URL,
+  transactionUrl: import.meta.env.VITE_TRANSACTION_URL
 };

@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Vote, X } from "lucide-react";
+import { Vote } from "lucide-react";
 import {
   getAddress,
   getIndividualProjectInfo,
@@ -40,6 +40,10 @@ const ProjectDetail = () => {
 
   const [modalOpen, setModalOpen] = useState<boolean>(false);
 
+  const [successModalOpen, setSuccessModalOpen] = useState<boolean>(true);
+
+  const [txHash, setTxHash] = useState<string>("");
+
   const [userInfoData, setUserInfoData] = useState<UserInfoPage>();
 
   const calculateQuadraticCost = (votes: number) => Math.pow(votes, 2);
@@ -48,77 +52,89 @@ const ProjectDetail = () => {
     if (value >= 0) setVoteAmount(value);
   };
 
-  const handleVoteSubmit = async () => {
-    if (voteAmount > 1 && !userInfoData?.isVerified) {
+  const modalPopUpOpen = async () => {
+    if (voteAmount < -1 && !userInfoData?.isVerified) {
       setError("You are not verified to vote more than one vote per poll");
       return;
     }
 
-    if (voteAmount > 0 && projectId && pollId) {
-      setLoading(true);
-      setModalOpen(false);
+    if (projectId && pollId) {
+      setModalOpen(true);
+    }
+  };
 
+  const handleVoteSubmit = async () => {
+    if (!projectId) return;
+    setLoading(true);
+
+    try {
+      const senderAddress = await getAddress();
+      if (!senderAddress) {
+        setError("Failed to retrieve sender address");
+        setModalOpen(false);
+        setSuccessModalOpen(false);
+        setLoading(false);
+        return;
+      }
+
+      const body = [Number(pollId), voteAmount];
+
+      const signer = await getSigner();
+      const contract = new ethers.Contract(projectId, qvABI.abi, signer);
+
+      // Step 1: Static Call to Simulate the Transaction
       try {
-        const senderAddress = await getAddress();
-        if (!senderAddress) {
-          setError("Failed to retrieve sender address");
-          setLoading(false);
-          return;
-        }
-
-        const body = [Number(pollId), voteAmount];
-
-        const signer = await getSigner();
-        const contract = new ethers.Contract(projectId, qvABI.abi, signer);
-
-        // Step 1: Static Call to Simulate the Transaction
-        try {
-          const txSimulation = await contract.callStatic.castVote(
-            Number(pollId),
-            voteAmount
-          );
-          console.log("Static Call Success:", txSimulation);
-        } catch (staticError: any) {
-          console.error("Static Call Failed:", staticError);
-          setError(
-            `Transaction simulation failed: ${
-              staticError.reason || staticError.message
-            }`
-          );
-          setLoading(false);
-          return;
-        }
-
-        // Step 2: Proceed with Actual Transaction Execution
-        const txHash = await getTransactionHash("castVote", body, 2);
-        if (!txHash?.status) {
-          setError(`Transaction failed: ${txHash?.error}`);
-          setLoading(false);
-          return;
-        }
-
-        const requestBody = {
-          sender: senderAddress,
-          txData: txHash?.txData,
-          contractAddress: projectId,
-        };
-
-        const response = await axios.post(
-          environment.QvBackendUrl,
-          requestBody
+        const txSimulation = await contract.callStatic.castVote(
+          Number(pollId),
+          voteAmount
+        );
+        console.log("Static Call Success:", txSimulation);
+      } catch (staticError: any) {
+        console.error("Static Call Failed:", staticError);
+        setError(
+          `Transaction simulation failed: ${
+            staticError.reason || staticError.message
+          }`
         );
 
-        if (response.status === 200) {
-          setVoteAmount(0);
-        } else {
-          setError("Transaction execution failed");
-        }
-      } catch (err) {
-        console.log("Error:", err);
-        setError("An unexpected error occurred while voting");
-      } finally {
+        setModalOpen(false);
+        setSuccessModalOpen(false);
         setLoading(false);
+        return;
       }
+
+      // Step 2: Proceed with Actual Transaction Execution
+      const txHash = await getTransactionHash("castVote", body, 2);
+      if (!txHash?.status) {
+        setError(`Transaction failed: ${txHash?.error}`);
+        setModalOpen(false);
+        setSuccessModalOpen(false);
+        setLoading(false);
+        return;
+      }
+
+      const requestBody = {
+        sender: senderAddress,
+        txData: txHash?.txData,
+        contractAddress: projectId,
+      };
+
+      const response = await axios.post(environment.QvBackendUrl, requestBody);
+
+      if (response.status === 200) {
+        setTxHash(response.data.hash);
+        setVoteAmount(0);
+        setSuccessModalOpen(true);
+      } else {
+        setError("Transaction execution failed");
+      }
+    } catch (err) {
+      console.log("Error:", err);
+      setError("An unexpected error occurred while voting");
+    } finally {
+      setModalOpen(false);
+      setSuccessModalOpen(false);
+      setLoading(false);
     }
   };
 
@@ -144,6 +160,8 @@ const ProjectDetail = () => {
       console.error("Error fetching poll data");
     }
 
+    setModalOpen(false);
+    setSuccessModalOpen(false);
     setLoading(false);
   };
 
@@ -166,6 +184,8 @@ const ProjectDetail = () => {
       console.error("Error fetching pols:", err);
       setError("Something went wrong");
     } finally {
+      setModalOpen(false);
+      setSuccessModalOpen(false);
       setLoading(false);
     }
   };
@@ -199,6 +219,8 @@ const ProjectDetail = () => {
     voteInfoDataFunction();
     projectInfoFunction();
   }, []);
+
+  console.log("voteAmount", voteAmount);
 
   return (
     <div className="max-w-4xl mx-auto py-12 px-4">
@@ -274,8 +296,8 @@ const ProjectDetail = () => {
               </div>
 
               <button
-                onClick={handleVoteSubmit}
-                disabled={voteAmount === 0 || loading}
+                onClick={modalPopUpOpen}
+                disabled={voteAmount < -1 || loading}
                 className="w-full bg-[#FE0421] text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {voteInfoData?.hasVoted ? "RESUBMIT VOTES" : "Submit Votes"}
@@ -285,38 +307,83 @@ const ProjectDetail = () => {
 
           {modalOpen && (
             <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white p-6 rounded-xl shadow-xl w-96">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-semibold">Confirm Your Vote</h2>
-                  <button onClick={() => setModalOpen(false)}>
-                    <X className="w-5 h-5 text-gray-500" />
-                  </button>
+              <div className="bg-white p-6 rounded-2xl shadow-2xl w-[30%]">
+                <div className="flex flex-col items-center text-center">
+                  <p className="text-gray-900 text-xl font-semibold mb-2">
+                    Confirm Your Vote
+                  </p>
                 </div>
 
-                <p className="text-gray-600 mb-4">
+                {/* Vote Details */}
+                <p className="text-gray-700 text-lg mb-3">
                   You are about to cast <strong>{voteAmount}</strong> votes.
                 </p>
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-700 text-lg mb-6">
                   Total cost:{" "}
-                  <strong className="text-red-500">
+                  <strong className="text-[#FE0421]">
                     {calculateQuadraticCost(voteAmount)} tokens
                   </strong>
                 </p>
 
+                {/* Action Buttons */}
                 <div className="flex space-x-4">
+                  {/* Cancel Button */}
                   <button
-                    onClick={() => setModalOpen(false)}
-                    className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+                    onClick={() => {
+                      setModalOpen(false);
+                      setSuccessModalOpen(false);
+                    }}
+                    className="flex-1 py-3 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-100 transition"
                   >
                     Cancel
                   </button>
 
+                  {/* Confirm Button */}
                   <button
                     onClick={handleVoteSubmit}
-                    className="flex-1 py-2 rounded-lg bg-[#FE0421] text-white font-semibold hover:bg-red-600 transition"
+                    className="flex-1 py-3 rounded-lg bg-[#FE0421] text-white font-semibold hover:bg-red-600 transition"
                   >
                     Confirm
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {successModalOpen && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-6 rounded-2xl shadow-2xl w-[30%]">
+                <div className="flex flex-col items-center text-center">
+                  <p className="text-gray-700 text-lg font-medium">
+                    Voting successfully!
+                  </p>
+
+                  <div className="flex space-x-4 mt-6 w-full">
+                    {/* Close Button */}
+                    <button
+                      onClick={() => {
+                        setModalOpen(false);
+                        setSuccessModalOpen(false);
+                        window.location.reload();
+                      }}
+                      className="flex-1 py-3 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition border"
+                    >
+                      Close
+                    </button>
+
+                    {/* Redirect Button */}
+                    <button
+                      onClick={() =>
+                        window.open(
+                          `${environment.transactionUrl}/${txHash}`,
+                          "_blank"
+                        )
+                      }
+                      className="flex-1 py-3 rounded-lg bg-[#FE0421] text-white font-medium hover:bg-[#D9021A] transition"
+                    >
+                      View in Explorer
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

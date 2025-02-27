@@ -28,6 +28,8 @@ const CreatePoll = () => {
 
   const [modalOpen, setModalOpen] = useState<boolean>(false);
 
+  const [txHash, setTxHash] = useState<string>("");
+
   const { projectId } = useParams();
 
   const handleUploadImageToIPFS = async (image: File) => {
@@ -156,6 +158,7 @@ const CreatePoll = () => {
         );
 
         if (response.status === 200) {
+          setTxHash(response.data.hash);
           setModalOpen(true);
         } else {
           setError("Transaction execution failed");
@@ -231,9 +234,15 @@ const CreatePoll = () => {
             >
               Poll Title
             </label>
-            <span title="Give your poll a unique and descriptive name">
+            <div className="relative group">
               <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
-            </span>
+              <div
+                className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
+                style={{ width: "max-content" }}
+              >
+                Give your poll a unique and descriptive name
+              </div>
+            </div>
           </div>
 
           <input
@@ -262,9 +271,15 @@ const CreatePoll = () => {
             >
               Description
             </label>
-            <span title="Briefly describe what your poll is about and its objectives">
+            <div className="relative group">
               <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
-            </span>
+              <div
+                className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
+                style={{ width: "max-content" }}
+              >
+                Briefly describe what your poll is about and its objectives
+              </div>
+            </div>
           </div>
 
           <textarea
@@ -306,9 +321,16 @@ const CreatePoll = () => {
                 />
               ) : (
                 <>
-                  <span title="Upload an image for your poll. PNG, JPG, or WEBP only">
-                    <ImagePlus className="w-12 h-12 text-[#FE0421] mb-4" />
-                  </span>
+                  <div className="relative group">
+                    <ImagePlus className="w-12 h-12 text-[#FE0421] mb-4 cursor-pointer" />
+                    <div
+                      className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
+                      style={{ width: "max-content" }}
+                    >
+                      Upload an image for your poll. PNG, JPG, or WEBP only
+                    </div>
+                  </div>
+
                   <p className="mb-2 text-sm text-gray-500">
                     <span className="font-semibold">Click to upload</span> or
                     drag and drop
@@ -349,20 +371,38 @@ const CreatePoll = () => {
 
       {modalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-xl shadow-xl w-96">
-            <p className="text-gray-600 mb-4">Poll created successfully!</p>
+          <div className="bg-white p-6 rounded-2xl shadow-2xl w-[30%]">
+            <div className="flex flex-col items-center text-center">
+              <p className="text-gray-700 text-lg font-medium">
+                Poll created successfully!
+              </p>
 
-            <div className="flex space-x-4">
-              <button
-                onClick={() => {
-                  setModalOpen(false);
-                  resetForm();
-                  setImagePreview(null);
-                }}
-                className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
-              >
-                Close
-              </button>
+              <div className="flex space-x-4 mt-6 w-full">
+                {/* Close Button */}
+                <button
+                  onClick={() => {
+                    setModalOpen(false);
+                    resetForm();
+                    setImagePreview(null);
+                  }}
+                  className="flex-1 py-3 rounded-lg bg-gray-100 text-gray-700 font-medium hover:bg-gray-200 transition border"
+                >
+                  Close
+                </button>
+
+                {/* Redirect Button */}
+                <button
+                  onClick={() =>
+                    window.open(
+                      `${environment.transactionUrl}/${txHash}`,
+                      "_blank"
+                    )
+                  }
+                  className="flex-1 py-3 rounded-lg bg-[#FE0421] text-white font-medium hover:bg-[#D9021A] transition"
+                >
+                  View in Explorer
+                </button>
+              </div>
             </div>
           </div>
         </div>
