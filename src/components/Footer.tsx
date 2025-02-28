@@ -23,30 +23,29 @@ const Footer = () => {
               </span>
             </Link>
             <p className="text-gray-600">
-              A decentralized voting platform where communities create, share,
-              and participate in transparent and fair polls.
+              A decentralized and sybil resistant QV voting platform on Optimism.
             </p>
             <div className="flex space-x-4">
               <a
-                href="#"
+                href="https://x.com/parry_community"
                 className="text-gray-600 hover:text-[#FE0421] transition-colors"
               >
                 <Twitter className="w-5 h-5" />
               </a>
-              <a
-                href="#"
+              {/* <a
+                href=""
                 className="text-gray-600 hover:text-[#FE0421] transition-colors"
               >
                 <Instagram className="w-5 h-5" />
-              </a>
-              <a
+              </a> */}
+              {/* <a
                 href="#"
                 className="text-gray-600 hover:text-[#FE0421] transition-colors"
               >
                 <Facebook className="w-5 h-5" />
-              </a>
+              </a> */}
               <a
-                href="#"
+                href="https://github.com/Parry-Community"
                 className="text-gray-600 hover:text-[#FE0421] transition-colors"
               >
                 <Github className="w-5 h-5" />
@@ -83,7 +82,7 @@ const Footer = () => {
             <ul className="space-y-3">
               <li className="flex items-center space-x-3 text-gray-600">
                 <Mail className="w-5 h-5 text-[#FE0421]" />
-                <span>contact@optimisticvote.com</span>
+                <span>team@parry.vote</span>
               </li>
             </ul>
           </div>
@@ -92,16 +91,16 @@ const Footer = () => {
         <div className="py-6 border-t">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="text-gray-600">
-              © {new Date().getFullYear()} Optimistic Vote. All rights reserved.
+              Funded by Optimism Grant Season 5
             </div>
             <div className="flex space-x-6">
               <Link
-                to="#"
+                to="https://parry.vote"
                 className="text-gray-600 hover:text-[#FE0421] transition-colors"
               >
-                Privacy Policy
+                Developed by Parry
               </Link>
-              <Link
+              {/* <Link
                 to="#"
                 className="text-gray-600 hover:text-[#FE0421] transition-colors"
               >
@@ -112,7 +111,7 @@ const Footer = () => {
                 className="text-gray-600 hover:text-[#FE0421] transition-colors"
               >
                 Cookie Policy
-              </Link>
+              </Link> */}
             </div>
           </div>
         </div>
