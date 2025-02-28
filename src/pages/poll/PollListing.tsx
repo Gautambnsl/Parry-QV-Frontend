@@ -205,7 +205,7 @@ const PollListing = () => {
           {projectsData ? (
             <p className="text-gray-600 mb-6">
               Explore all available proposals. Minimum Gitcoin passport score required to join:{" "}
-              {(projectsData.minScoreToJoin / 10000).toFixed(2)} Score needed to be veriefied and to enable QV:{" "}
+              {(projectsData.minScoreToJoin / 10000).toFixed(2)}. Verified user score to enable QV:{" "}
               {(projectsData.minScoreToVerify / 10000).toFixed(2)} Verified users receive{" "}
               {projectsData.tokensPerVerifiedUser} tokens. Regular users
               receive {projectsData.tokensPerUser} tokens.
@@ -239,7 +239,7 @@ const PollListing = () => {
             to={`/projects/${projectId}/create-poll`}
             className="inline-block bg-[#FE0421] text-white px-5 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300 ml-2"
           >
-            Create Poll
+            Create Proposal
           </Link>
         </div>
       </div>
