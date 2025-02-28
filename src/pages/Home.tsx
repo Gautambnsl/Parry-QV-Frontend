@@ -72,7 +72,7 @@ const Home = () => {
                   Resistant
                 </span>
                 <span className="block transform hover:translate-x-4 transition-transform duration-300">
-                  QV Voting
+                  QV
                 </span>
               </h1>
 
