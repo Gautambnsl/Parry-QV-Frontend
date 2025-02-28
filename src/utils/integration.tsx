@@ -149,7 +149,7 @@ export async function getAllPollsInfo(projectId: string) {
     const pollInfo = await contract.getAllPolls();
     return pollInfo;
   } catch (err) {
-    console.error("Error fetching polls:", err);
+    console.error("Error fetching proposals:", err);
     return {
       status: false,
       error: err,

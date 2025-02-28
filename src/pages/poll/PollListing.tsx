@@ -55,7 +55,7 @@ const PollListing = () => {
         throw new Error("Unexpected response format from API");
       }
     } catch (err) {
-      console.error("Error fetching polls:", err);
+      console.error("Error fetching proposals:", err);
       setError("Something went wrong");
     } finally {
       setLoading(false);
@@ -78,7 +78,7 @@ const PollListing = () => {
         totalVotesCast: userInfoData[5]?.toString(),
       });
     } catch (err) {
-      console.error("Error fetching polls:", err);
+      console.error("Error fetching proposals:", err);
       setError("Something went wrong");
     } finally {
       setLoading(false);
@@ -200,21 +200,19 @@ const PollListing = () => {
 
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-4xl font-bold text-[#0E101A] mb-4">Polls</h1>
+          <h1 className="text-4xl font-bold text-[#0E101A] mb-4">Proposals</h1>
 
           {projectsData ? (
             <p className="text-gray-600 mb-6">
-              Explore all available voting polls. A minimum score of{" "}
-              {(projectsData.minScoreToJoin / 10000).toFixed(2)} is required to
-              join a project, while a score of{" "}
-              {(projectsData.minScoreToVerify / 10000).toFixed(2)} is needed for
-              verification. Verified users receive{" "}
-              {projectsData.tokensPerVerifiedUser} votes, whereas regular users
-              get {projectsData.tokensPerUser} votes.
+              Explore all available proposals. Minimum Gitcoin passport score required to join:{" "}
+              {(projectsData.minScoreToJoin / 10000).toFixed(2)}. Verified user score to enable QV:{" "}
+              {(projectsData.minScoreToVerify / 10000).toFixed(2)} Verified users receive{" "}
+              {projectsData.tokensPerVerifiedUser} tokens. Regular users
+              receive {projectsData.tokensPerUser} tokens.
             </p>
           ) : (
             <p className="text-gray-400 italic">
-              Loading voting poll details...
+              Loading voting proposal details...
             </p>
           )}
         </div>
@@ -241,7 +239,7 @@ const PollListing = () => {
             to={`/projects/${projectId}/create-poll`}
             className="inline-block bg-[#FE0421] text-white px-5 py-2 rounded-lg shadow-md hover:bg-red-700 transition-colors duration-300 ml-2"
           >
-            Create Poll
+            Create Proposal
           </Link>
         </div>
       </div>
@@ -256,7 +254,7 @@ const PollListing = () => {
 
       {loading && (
         <div className="text-center text-gray-500 text-xl">
-          Loading polls...
+          Loading proposals...
         </div>
       )}
 
@@ -315,8 +313,8 @@ const PollListing = () => {
         !error && (
           <div className="text-center text-gray-500 text-xl">
             {!userInfoData?.isRegistered
-              ? "Please join project to see the polls"
-              : "No polls available"}
+              ? "Please join project to see the proposals"
+              : "No proposals available"}
           </div>
         )
       )}

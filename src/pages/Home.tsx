@@ -66,19 +66,18 @@ const Home = () => {
 
               <h1 className="text-8xl font-bold text-white space-y-4">
                 <span className="block transform hover:translate-x-4 transition-transform duration-300">
-                  Discover
+                  Sybil
                 </span>
-                <span className="block text-[#FE0421] transform hover:-translate-x-4 transition-transform duration-300">
-                  Vote
+                <span className="block text-[white] transform hover:-translate-x-4 transition-transform duration-300">
+                  Resistant
                 </span>
                 <span className="block transform hover:translate-x-4 transition-transform duration-300">
-                  Explore!
+                  QV Voting
                 </span>
               </h1>
 
               <p className="text-xl text-gray-200 max-w-lg">
-                Join our vibrant community in shaping the future. Your vote has
-                the power to unveil the world's hidden gems.
+              Unlock the full potential of Quadratic Voting with Sybil Resistance, powered by Gitcoin Passport
               </p>
 
               <div className="flex flex-wrap gap-4">
@@ -99,7 +98,7 @@ const Home = () => {
               </div>
             </div>
 
-            <div className="relative">
+           {/*  <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-[#FE0421]/20 to-transparent rounded-3xl transform rotate-6" />
               <div className="relative bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20">
                 <div className="grid grid-cols-2 gap-6">
@@ -122,7 +121,7 @@ const Home = () => {
                   ))}
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
@@ -132,10 +131,10 @@ const Home = () => {
           <div className="flex justify-between items-end mb-12">
             <div>
               <h2 className="text-5xl font-bold text-[#0E101A] mb-4">
-                Trending Project
+                All Projects
               </h2>
               <p className="text-gray-600">
-                Vote for your favorite projects and help them reach the top
+                
               </p>
             </div>
             <Link

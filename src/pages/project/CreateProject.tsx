@@ -425,7 +425,7 @@ const CreateProject: React.FC = () => {
                   className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
                   style={{ width: "max-content" }}
                 >
-                  Users must have at least this score to join the project
+                  Users must have at least this Gitcoin passport score to join the project
                 </div>
               </div>
             </div>
@@ -460,7 +460,7 @@ const CreateProject: React.FC = () => {
                   className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
                   style={{ width: "max-content" }}
                 >
-                  Users must meet this score threshold to be considered verified
+                  Users must meet this Gitcoin passport score threshold to be considered verified
                 </div>
               </div>
             </div>
