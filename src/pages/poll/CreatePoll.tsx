@@ -214,11 +214,11 @@ const CreatePoll = () => {
 
       <div className="text-center mb-12">
         <h1 className="text-4xl font-bold text-[#0E101A] mb-4">
-          Create a New Poll
+          Create a New Proposal
         </h1>
 
         <p className="text-gray-600">
-          Set up a new voting poll for your community
+          Set up a new proposal for your community
         </p>
       </div>
 
@@ -232,7 +232,7 @@ const CreatePoll = () => {
               htmlFor="name"
               className="block text-sm font-medium text-gray-700"
             >
-              Poll Title
+              Proposal Title
             </label>
             <div className="relative group">
               <Info className="w-4 h-4 text-gray-500 cursor-pointer" />
@@ -240,7 +240,7 @@ const CreatePoll = () => {
                 className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
                 style={{ width: "max-content" }}
               >
-                Give your poll a unique and descriptive name
+                Give your proposal a unique and descriptive name
               </div>
             </div>
           </div>
@@ -255,7 +255,7 @@ const CreatePoll = () => {
             className={`w-full px-4 py-3 rounded-lg border ${
               touched.name && errors.name ? "border-red-500" : "border-gray-300"
             } focus:ring-2 focus:ring-[#FE0421] focus:border-transparent`}
-            placeholder="Enter poll title"
+            placeholder="Enter proposal title"
           />
 
           {touched.name && errors.name && (
@@ -277,7 +277,7 @@ const CreatePoll = () => {
                 className="absolute bottom-full hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
                 style={{ width: "max-content" }}
               >
-                Briefly describe what your poll is about and its objectives
+                Briefly describe what your proposal is about and its objectives
               </div>
             </div>
           </div>
@@ -293,7 +293,7 @@ const CreatePoll = () => {
                 ? "border-red-500"
                 : "border-gray-300"
             } focus:ring-2 focus:ring-[#FE0421] focus:border-transparent`}
-            placeholder="Describe your poll"
+            placeholder="Describe your proposal"
           />
 
           {touched.description && errors.description && (
@@ -327,7 +327,7 @@ const CreatePoll = () => {
                       className="absolute left-0 bottom-full mb-2 hidden group-hover:block bg-black text-white text-xs rounded py-1 px-2"
                       style={{ width: "max-content" }}
                     >
-                      Upload an image for your poll. PNG, JPG, or WEBP only
+                      Upload an image for your proposal. PNG, JPG, or WEBP only
                     </div>
                   </div>
 
@@ -361,7 +361,7 @@ const CreatePoll = () => {
           disabled={loading}
           className="w-full bg-[#FE0421] text-white py-4 px-6 rounded-lg font-semibold hover:bg-red-600 transition-colors"
         >
-          {loading ? "Creating..." : "Create Poll"}
+          {loading ? "Creating..." : "Create Proposal"}
         </button>
 
         {error && (
@@ -374,7 +374,7 @@ const CreatePoll = () => {
           <div className="bg-white p-6 rounded-2xl shadow-2xl w-[30%]">
             <div className="flex flex-col items-center text-center">
               <p className="text-gray-700 text-lg font-medium">
-                Poll created successfully!
+                Proposal created successfully!
               </p>
 
               <div className="flex space-x-4 mt-6 w-full">
