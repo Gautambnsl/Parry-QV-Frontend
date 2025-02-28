@@ -294,7 +294,7 @@ const ProjectDetail = () => {
 
               <button
                 onClick={modalPopUpOpen}
-                disabled={voteAmount < -1 || loading}
+                disabled={voteAmount <= 0 || loading}
                 className="w-full bg-[#FE0421] text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {voteInfoData?.hasVoted ? "RESUBMIT VOTES" : "Submit Votes"}
@@ -391,7 +391,7 @@ const ProjectDetail = () => {
               <div className="flex items-center space-x-3 text-[#0E101A] mb-2">
                 <Vote className="w-5 h-5 text-[#FE0421]" />
 
-                <h3 className="font-semibold">Total Participants</h3>
+                <h3 className="font-semibold">Total Votes Cast</h3>
               </div>
 
               <p className="text-2xl font-bold text-[#FE0421]">{totalVotes}</p>
