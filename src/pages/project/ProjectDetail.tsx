@@ -150,11 +150,11 @@ const ProjectDetail = () => {
         ipfsHash: pollData[2],
         creator: pollData[3],
         isActive: pollData[4],
-        totalVotes: BigNumber.from(pollData[6]).toNumber(),
-        totalParticipants: BigNumber.from(pollData[5]).toNumber(),
+        totalVotes: BigNumber.from(pollData[5]).toNumber(),
+        totalParticipants: BigNumber.from(pollData[6]).toNumber(),
       });
 
-      setTotalVotes(BigNumber.from(pollData[6]).toNumber());
+      setTotalVotes(BigNumber.from(pollData[5]).toNumber());
     } catch {
       console.error("Error fetching poll data");
     }
