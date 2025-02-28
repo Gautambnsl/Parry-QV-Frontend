@@ -259,7 +259,7 @@ const ProjectDetail = () => {
           <div className="flex items-center justify-between mb-8">
             <div className="bg-[#FAFDFE] rounded-xl p-6 flex-1 mr-4">
               <h3 className="text-lg font-semibold text-[#0E101A] mb-4">
-                Quadratic Voting
+                Number of Votes
               </h3>
 
               <div className="flex items-center space-x-4 mb-4">
@@ -401,7 +401,7 @@ const ProjectDetail = () => {
               <div className="flex items-center space-x-3 text-[#0E101A] mb-2">
                 <Vote className="w-5 h-5 text-[#FE0421]" />
 
-                <h3 className="font-semibold">Your Votes Cast</h3>
+                <h3 className="font-semibold">Your Votes</h3>
               </div>
 
               <p className="text-2xl font-bold text-[#FE0421]">
