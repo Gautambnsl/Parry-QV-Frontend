@@ -294,7 +294,7 @@ const ProjectDetail = () => {
 
               <button
                 onClick={modalPopUpOpen}
-                disabled={voteAmount < -1 || loading}
+                disabled={voteAmount <= 0 || loading}
                 className="w-full bg-[#FE0421] text-white py-3 px-6 rounded-lg font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {voteInfoData?.hasVoted ? "RESUBMIT VOTES" : "Submit Votes"}
