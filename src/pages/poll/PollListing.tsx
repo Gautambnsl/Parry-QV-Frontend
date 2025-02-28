@@ -291,7 +291,7 @@ const PollListing = () => {
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center text-[#0E101A]">
                     <Users className="w-4 h-4 mr-2" />
-                    <span>Total Votes Cast:</span>
+                    <span>Total Votes:</span>
                   </div>
 
                   <span className="font-medium text-[#FE0421]">
